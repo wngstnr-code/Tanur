@@ -20,7 +20,7 @@ jobs:
     with:
       release_name: tanur-vault-${{ github.ref_name }}
       release_description: 'TanurVault — verified reproducible build'
-      relative_path: '["contracts/tanur-vault"]'
+      relative_path: 'contracts/tanur-vault'
       package: 'tanur-vault'
     secrets:
       release_token: ${{ secrets.GITHUB_TOKEN }}
@@ -30,7 +30,7 @@ jobs:
     with:
       release_name: tanur-yield-${{ github.ref_name }}
       release_description: 'TanurYield — verified reproducible build'
-      relative_path: '["contracts/tanur-yield"]'
+      relative_path: 'contracts/tanur-yield'
       package: 'tanur-yield'
     secrets:
       release_token: ${{ secrets.GITHUB_TOKEN }}
