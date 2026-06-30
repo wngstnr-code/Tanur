@@ -1,0 +1,22 @@
+{
+  "network": "testnet",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "rpc_url": "https://soroban-testnet.stellar.org",
+  "horizon_url": "https://horizon-testnet.stellar.org",
+  "explorer": "https://stellar.expert/explorer/testnet",
+  "accounts": {
+    "issuer": "GCSUJWSUHWHNZYN33UC43TKKJEQNOKXEGY6B5H5TBVYOCFYVF7PONKNP",
+    "admin": "GBKG7TWMCNNN56KSS7PRATYZZYO67A5LPBSV2K6G5T3N3UA7USECDK32",
+    "oracle": "GD63Q772QGFPDLJ6YBJPTH7TJXX2SIKWDAEKSOTKF36FF7WURMYTNJBG",
+    "kyc_user": "GC26IY7Y25IBXVZWHLDI5QQF4TM4VPV4BSHIH36IHU666T3JKI6SWECP"
+  },
+  "assets": {
+    "tanur": { "code": "TANUR", "issuer": "GCSUJWSUHWHNZYN33UC43TKKJEQNOKXEGY6B5H5TBVYOCFYVF7PONKNP", "sac": "CDXYMTWV32PKGEOYJT4AMOSPO72RLADKLZ2CDWP7YWKTBXATHNAT3M4D" },
+    "usdc": { "code": "USDC", "issuer": "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5", "sac": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA" }
+  },
+  "contracts": {
+    "vault": "CBORXURFYF5RZVFW423IE4VWAVU5AD32ZPYTKVVCCOU3LX7ZPY7OGVMJ",
+    "yield": "CCTXME7WDWRP7G65SYYTFO2YZ5IKVNERMRF6Q6MAWXSURF66FBD6JUWJ"
+  },
+  "tokenomics": { "token_rate": 1000, "gorr_bps": 100 }
+}
