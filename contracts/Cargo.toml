@@ -1,0 +1,25 @@
+[workspace]
+resolver = "2"
+members = [
+    "tanur-vault",
+    "tanur-yield",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Tanur"]
+
+[workspace.dependencies]
+soroban-sdk = "25.0.1"
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
