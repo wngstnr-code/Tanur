@@ -29,9 +29,9 @@ Addresses live in [`deploy/addresses.json`](./deploy/addresses.json). Explorer:
 
 | | Contract / Asset |
 |---|---|
-| TanurVault | `CCZVV5BYN76RYDA5MLCR7TOZC24IASMG2QL5KMXXCZT2Q5WP76OCUCOS` |
-| TanurYield | `CAZAKOWVTG3HQ26H257SBQZDHB44JSS37XHGHEV3IRGFOYRMO6EH7L7J` |
-| TANUR (SAC) | `CAWFHQLUXUHA3MJUBTYE7GXXQSKQPUOWBM4Q4LS6ZEVDC3SA227GPUZB` |
+| TanurVault | `CAQIOGWVGICYOXQW6H2XFYN4MLDAFURDGLUTBGF4FL55Z7YKJNZMYPHP` |
+| TanurYield | `CDIF5HDGQAK7O7W776KFB23UCK5QXP2JRNTIFMAXIAOBBILFQJB4RO55` |
+| TANUR (SAC) | `CBI2W5EMERZUVXNIUCMRIMXARDLXZZM6RAHCQDD6OTYBTU7RHL4ET4F3` |
 | USDC (Circle testnet) | `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5` |
 
 **Upgradeable + verified.** Both contracts expose `upgrade(new_wasm_hash)` (SEP-49,
@@ -42,8 +42,8 @@ attestation, so StellarExpert links each contract to this source commit:
 
 | Contract | On-chain WASM hash (= attested CI build) |
 |---|---|
-| TanurVault | `f906873897de932b23c33c1ec5e8f4814be8754d6a0e42478ae91a7b32024a08` |
-| TanurYield | `7dba117a725ea2f1abc4d94e2935861cbcf01203c135354cbf29b5d9f6018eb0` |
+| TanurVault | `556e9a815c5ee9e2abb40637a95df28823e6e6648e1444af3c170edfd1060e95` |
+| TanurYield | `91712045ff2e3b2c31fc891945ae144e8750ad55672978bb7586aef545219a27` |
 
 ## The full economic loop, executed on-chain
 
@@ -51,9 +51,9 @@ record + atomic mint → fund USDC → KYC-gated claim. Verified transactions:
 
 | Step | Tx |
 |---|---|
-| 1. `record_epoch` (+ mint TANUR) | [`aec624c8…`](https://stellar.expert/explorer/testnet/tx/aec624c8374726cea1b387e5dd31e2e0603421d69e3e9a71f014c966d5fe8735) |
-| 2. `fund_epoch` (100 USDC) | [`cde626b4…`](https://stellar.expert/explorer/testnet/tx/cde626b44895a37d850623ce792b16e3c75d3a13956dff86db0a4561f58a2c68) |
-| 3. `claim` (60 USDC, pro-rata, KYC-gated) | [`a2c23cd3…`](https://stellar.expert/explorer/testnet/tx/a2c23cd396d168d89082541f0da34f8f7fe5244abedff8d01ab7de4f7f4ef9f1) |
+| 1. `record_epoch` (+ mint TANUR) | [`76fac31e…`](https://stellar.expert/explorer/testnet/tx/76fac31e5b83312926fc1e1ed8150e90e789525e4bae79febc3481aedf11da02) |
+| 2. `fund_epoch` (100 USDC) | [`38bb4aa3…`](https://stellar.expert/explorer/testnet/tx/38bb4aa3c97b8c46f37a69eceaf8989816e346d6feee315a51a31f2dc9c054b4) |
+| 3. `claim` (60 USDC, pro-rata, KYC-gated) | [`c22b7b5a…`](https://stellar.expert/explorer/testnet/tx/c22b7b5a71b7f34844ab1f57c9cd31a09b0f4ca45951ea98f88b57b2ab2cd409) |
 
 ## Run it
 
