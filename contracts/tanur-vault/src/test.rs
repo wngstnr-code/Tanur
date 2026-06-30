@@ -56,12 +56,14 @@ fn record_and_mint_atomic() {
         .vault
         .record_epoch(&1, &label(&h.env), &5000, &1_600_000, &1_580_000, &90);
 
-    // 5000 × 1000 × 100 / 10_000 = 50_000
-    assert_eq!(minted, 50_000);
-    assert_eq!(h.tanur.balance(&h.treasury), 50_000);
-    assert_eq!(h.vault.get_total_minted(), 50_000);
+    // 5000 × 1000 × 100 / 10_000 = 50_000 whole tokens, scaled by 10^7 (7 decimals).
+    let expected: i128 = 50_000 * 10_000_000;
+    assert_eq!(minted, expected);
+    assert_eq!(h.tanur.balance(&h.treasury), expected);
+    assert_eq!(h.vault.get_total_minted(), expected);
     assert_eq!(h.vault.get_total_tonnes(), 5000);
     assert_eq!(h.vault.get_oracle_reputation(), 90);
+    assert_eq!(h.vault.get_submission_count(), 1);
     assert_eq!(h.vault.get_epoch_count(), 1);
     assert_eq!(h.vault.get_latest_epoch(), 1);
 }

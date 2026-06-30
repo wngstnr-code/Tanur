@@ -120,7 +120,7 @@ export default function RwaSection() {
                   />
                 </div>
                 <div className="mt-2.5 flex justify-between font-mono text-[11px] text-faint">
-                  <span>{s?.epoch_count ?? 0} submissions</span>
+                  <span>{s?.oracle_submission_count ?? 0} submissions</span>
                   <span>{rep >= 90 ? 'Excellent' : rep >= 75 ? 'Good' : 'Review'}</span>
                 </div>
               </div>

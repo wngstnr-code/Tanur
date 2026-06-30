@@ -18,7 +18,7 @@ use soroban_sdk::{
 };
 
 contractmeta!(key = "name", val = "TanurVault");
-contractmeta!(key = "binver", val = "0.2.0");
+contractmeta!(key = "binver", val = "0.3.0");
 contractmeta!(key = "source", val = "https://github.com/wngstnr-code/Tanur");
 
 /// Minimum cross-validated oracle score (0–100) we accept on-chain.
@@ -30,6 +30,10 @@ const BPS_DENOM: i128 = 10_000;
 /// Sanity cap on Ni-content per epoch — bounds the blast radius if the oracle
 /// key is ever compromised (a single epoch can't mint an absurd supply).
 const MAX_TONNES_PER_EPOCH: i128 = 1_000_000;
+/// TANUR is a classic Stellar asset with 7 decimals. The tokenomics formula yields
+/// a whole-token count; we scale it to the asset's smallest unit (stroops) so that
+/// wallets, SDEX, and Horizon display TANUR naturally (1 token = 10^7 stroops).
+const TANUR_SCALE: i128 = 10_000_000;
 
 // TTL: ~1 day threshold, extend to ~30 days.
 const TTL_THRESHOLD: u32 = 17_280;
@@ -157,8 +161,10 @@ impl TanurVault {
         let token_rate: u32 = env.storage().instance().get(&DataKey::TokenRate).unwrap();
         let gorr_bps: u32 = env.storage().instance().get(&DataKey::GorrBps).unwrap();
 
-        // tonnes × token_rate × gorr_bps / 10_000 (overflow-checked in release).
-        let minted: i128 = tonnes * (token_rate as i128) * (gorr_bps as i128) / BPS_DENOM;
+        // tonnes × token_rate × gorr_bps / 10_000 whole tokens, scaled to stroops
+        // (7-decimal asset). Overflow-checked in release.
+        let minted_whole: i128 = tonnes * (token_rate as i128) * (gorr_bps as i128) / BPS_DENOM;
+        let minted: i128 = minted_whole * TANUR_SCALE;
 
         // Atomic mint from the state we just verified — the trust story (§14).
         let tanur_sac: Address = env.storage().instance().get(&DataKey::TanurSac).unwrap();
@@ -269,6 +275,11 @@ impl TanurVault {
 
     pub fn get_oracle_reputation(env: Env) -> u32 {
         env.storage().instance().get(&DataKey::RepScore).unwrap_or(0)
+    }
+
+    /// Number of accepted submissions behind the reputation score (transparency).
+    pub fn get_submission_count(env: Env) -> u32 {
+        env.storage().instance().get(&DataKey::RepCount).unwrap_or(0)
     }
 
     pub fn get_oracle(env: Env) -> Option<Address> {

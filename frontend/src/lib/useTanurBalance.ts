@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ASSETS } from './config';
+import { ASSETS, TANUR_DECIMALS } from './config';
 import { horizon, viewContract } from './stellar';
 
 export type Position = {
@@ -55,7 +55,12 @@ export function useTanurBalance(address?: string) {
         /* account not funded yet */
       }
 
-      setPos({ tanur: Number(tanurRaw), usdc, tanurTrustline, kycAuthorized });
+      setPos({
+        tanur: Number(tanurRaw) / 10 ** TANUR_DECIMALS,
+        usdc,
+        tanurTrustline,
+        kycAuthorized,
+      });
     } catch (e) {
       setErr(String(e));
       setPos(null);
