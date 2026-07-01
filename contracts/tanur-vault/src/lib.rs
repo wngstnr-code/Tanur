@@ -18,7 +18,7 @@ use soroban_sdk::{
 };
 
 contractmeta!(key = "name", val = "TanurVault");
-contractmeta!(key = "binver", val = "0.3.0");
+contractmeta!(key = "binver", val = "0.4.0");
 contractmeta!(key = "source", val = "https://github.com/wngstnr-code/Tanur");
 
 /// Minimum cross-validated oracle score (0–100) we accept on-chain.
@@ -292,6 +292,12 @@ impl TanurVault {
 
     pub fn get_total_minted(env: Env) -> i128 {
         env.storage().instance().get(&DataKey::TotalMinted).unwrap_or(0)
+    }
+
+    /// Whether a verified epoch with this number has been recorded. Used by
+    /// TanurYield to refuse funding an epoch that the oracle never recorded.
+    pub fn epoch_exists(env: Env, epoch: u32) -> bool {
+        env.storage().persistent().has(&DataKey::Epoch(epoch))
     }
 
     pub fn get_gorr(env: Env) -> u32 {

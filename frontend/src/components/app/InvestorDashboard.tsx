@@ -7,7 +7,7 @@ import { useChainState } from '@/lib/useChainState';
 import { useTanurBalance } from '@/lib/useTanurBalance';
 import { useFx } from '@/lib/useFx';
 import { signXdr } from '@/lib/wallet';
-import { buildClaimXdr } from '@/lib/claim';
+import { buildClaimXdr, fetchClaim } from '@/lib/claim';
 import { buildBuyXdr } from '@/lib/buy';
 import { submitSigned, submitSignedClassic, txUrl, contractUrl } from '@/lib/stellar';
 import { CONTRACTS, ASSETS } from '@/lib/config';
@@ -44,8 +44,14 @@ export default function InvestorDashboard() {
   async function handleClaim() {
     if (!address || !state) return;
     try {
+      setClaim({ phase: 'working', note: 'Fetching entitlement…' });
+      const entry = await fetchClaim(state.latest_epoch, address);
+      if (!entry) {
+        setClaim({ phase: 'error', message: 'No entitlement in this epoch snapshot.' });
+        return;
+      }
       setClaim({ phase: 'working', note: 'Building claim…' });
-      const xdr = await buildClaimXdr(address, state.latest_epoch);
+      const xdr = await buildClaimXdr(address, state.latest_epoch, entry.amount, entry.proof);
       setClaim({ phase: 'working', note: 'Sign in your wallet…' });
       const signed = await signXdr(xdr, address);
       setClaim({ phase: 'working', note: 'Submitting…' });
@@ -189,9 +195,9 @@ export default function InvestorDashboard() {
               </div>
               <h3 className="mt-2 font-display text-2xl text-ink">USDC, KYC-gated</h3>
               <p className="mt-2 text-[14px] text-muted">
-                Claim your pro-rata USDC for the latest funded epoch
-                {state ? ` (#${state.latest_epoch})` : ''}. The contract verifies your
-                KYC via a cross-contract read to the Vault.
+                Claim your USDC entitlement for the latest funded epoch
+                {state ? ` (#${state.latest_epoch})` : ''}. The amount is fixed by a
+                Merkle snapshot; the contract verifies your proof and KYC on-chain.
               </p>
               <div className="mt-5 flex items-center gap-3">
                 <Button
