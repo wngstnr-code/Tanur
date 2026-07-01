@@ -72,7 +72,7 @@ export default function HeroMorph() {
           <video
             className="absolute inset-0 h-full w-full object-cover [filter:saturate(0.7)_brightness(0.78)]"
             src="/hero/heroo.mp4"
-            poster="/hero/heroo.mp4"
+            poster="/hero/hero-poster.jpg"
             autoPlay
             muted
             playsInline

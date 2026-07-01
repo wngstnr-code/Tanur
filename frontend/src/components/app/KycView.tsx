@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
 import { ACCESS_EMAIL, ASSETS } from '@/lib/config';
 import { useInvestor } from './investor';
@@ -13,6 +13,11 @@ import {
 } from './shared';
 import { Card } from '@/components/ui/primitives';
 
+// Per-wallet "application submitted, awaiting issuer verification" flag.
+// Persisted in localStorage so the pending state survives reloads until the
+// issuer authorizes the trustline on-chain (pos.kycAuthorized flips to true).
+const submitKey = (addr?: string) => `tanur:kyc-submitted:${addr ?? 'anon'}`;
+
 export default function KycView() {
   const { pos, address, reload } = useInvestor();
 
@@ -22,6 +27,12 @@ export default function KycView() {
   const [accountType, setAccountType] = useState<'Individual' | 'Institution'>('Individual');
   const [agree, setAgree] = useState(false);
   const [sent, setSent] = useState(false);
+
+  // Restore the "already submitted" flag for the connected wallet.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setSent(localStorage.getItem(submitKey(address)) === '1');
+  }, [address]);
 
   const canSubmit = name.trim() && /.+@.+\..+/.test(email) && country.trim() && agree;
 
@@ -38,6 +49,7 @@ export default function KycView() {
     window.location.href = `mailto:${ACCESS_EMAIL}?subject=${encodeURIComponent(
       'Tanur KYC registration'
     )}&body=${encodeURIComponent(body)}`;
+    if (typeof window !== 'undefined') localStorage.setItem(submitKey(address), '1');
     setSent(true);
   }
 
@@ -57,6 +69,36 @@ export default function KycView() {
             <Button href="/app">Explore TANUR</Button>
             <Button href="/app/tools/claim" variant="secondary">
               Claim yield
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Submitted but not yet authorized — waiting on the issuer to verify.
+  if (sent) {
+    return (
+      <div className="mx-auto max-w-xl space-y-6">
+        <PageHead title="Verify KYC" sub="Application received — awaiting issuer verification." />
+        <Card className="p-8 text-center">
+          <span className="text-[13px] font-bold uppercase tracking-[0.14em] text-faint">
+            Pending review
+          </span>
+          <h3 className="mt-3 font-display text-2xl text-ink">Application under review</h3>
+          <p className="mt-2 text-[14px] text-muted">
+            Your application for
+            <span className="mx-1 break-all font-mono text-[12px] text-ink">{address ?? '—'}</span>
+            has been submitted. The issuer will authorize your TANUR trustline
+            (native AUTH_REQUIRED) once your details are verified.
+          </p>
+          <div className="mt-6 flex flex-col items-center gap-3">
+            <div className="w-full divide-y divide-line rounded-lg border border-line-2 text-left [&>div]:px-4">
+              <StatusRow label="Application" ok={true} />
+              <StatusRow label="Authorized" ok={false} />
+            </div>
+            <Button onClick={reload} variant="secondary" className="w-full">
+              Check verification status
             </Button>
           </div>
         </Card>
