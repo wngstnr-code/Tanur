@@ -79,6 +79,8 @@ export default function InvestorDashboard() {
     }
   }
 
+  if (!connected) return <ConnectGate ready={ready} onConnect={connect} />;
+
   return (
     <main className="min-h-screen bg-bg pb-24">
       {/* top bar */}
@@ -114,17 +116,6 @@ export default function InvestorDashboard() {
           Settled in USDC, displayed in USD &amp; Rupiah. KYC is native — the issuer
           authorizes your TANUR trustline.
         </p>
-
-        {!connected && (
-          <Card className="mt-8 p-8 text-center">
-            <p className="text-[15px] text-muted">
-              Connect a Stellar wallet (Freighter / Lobstr / xBull) to view your position.
-            </p>
-            <div className="mt-5 flex justify-center">
-              <Button size="lg" onClick={connect}>Connect wallet</Button>
-            </div>
-          </Card>
-        )}
       </Section>
 
       {connected && (
@@ -343,4 +334,46 @@ function humanError(e: unknown): string {
   if (/EpochNotFound|#6/i.test(m)) return 'No funded epoch to claim yet.';
   if (/reject|denied|cancel/i.test(m)) return 'Signature cancelled.';
   return m.length > 80 ? m.slice(0, 80) + '…' : m;
+}
+
+/* ─────────────────── wallet connect gate (not connected) ─────────────────── */
+
+function ConnectGate({ ready, onConnect }: { ready: boolean; onConnect: () => void }) {
+  return (
+    <main className="grid min-h-screen place-items-center bg-bg px-5 py-20">
+      <div className="flex w-full max-w-md flex-col items-center text-center">
+        <div className="grid h-20 w-20 place-items-center rounded-2xl border border-line bg-bg-2 shadow-card">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/tanur_dark.svg" alt="Tanur" className="h-11 w-11" />
+        </div>
+        <h1 className="mt-7 font-display text-3xl font-semibold tracking-tighter2 text-ink sm:text-4xl">
+          Your nickel revenue position
+        </h1>
+        <p className="mt-3 max-w-sm font-serif text-lg leading-relaxed text-muted">
+          Connect a Stellar wallet to view your TANUR holdings and claim USDC yield
+          from verified Indonesian nickel production.
+        </p>
+
+        <button
+          onClick={onConnect}
+          disabled={!ready}
+          className="mt-8 inline-flex items-center gap-2 rounded-lg bg-ink px-7 py-3 text-sm font-medium text-bg shadow-pill transition-transform hover:-translate-y-0.5 disabled:opacity-50"
+        >
+          {ready ? 'Connect wallet' : 'Loading…'}
+        </button>
+
+        <div className="mt-4 flex items-center gap-2 font-mono text-[11px] text-faint">
+          <span>Freighter</span>
+          <span className="text-line-2">·</span>
+          <span>Lobstr</span>
+          <span className="text-line-2">·</span>
+          <span>xBull</span>
+        </div>
+
+        <Link href="/" className="mt-8 text-sm text-muted transition-colors hover:text-ink">
+          ← Back to site
+        </Link>
+      </div>
+    </main>
+  );
 }
