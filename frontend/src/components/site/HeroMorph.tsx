@@ -26,7 +26,47 @@ function useViewport() {
 
 export default function HeroMorph() {
   const ref = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { isDesktop, h: vh } = useViewport();
+
+  // Boomerang the hero clip: play forward to the end, then reverse smoothly back
+  // to 0, forever. The bounce points are seamless (continuous frames, no cut).
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    let raf = 0;
+    let reversing = false;
+    let last = 0;
+
+    const reverseTick = () => {
+      if (!reversing) return;
+      const now = performance.now();
+      const dt = (now - last) / 1000;
+      last = now;
+      const next = v.currentTime - dt; // reverse at 1× real time
+      if (next <= 0) {
+        v.currentTime = 0;
+        reversing = false;
+        v.play().catch(() => {});
+        return;
+      }
+      v.currentTime = next;
+      raf = requestAnimationFrame(reverseTick);
+    };
+    const onEnded = () => {
+      reversing = true;
+      last = performance.now();
+      v.pause();
+      raf = requestAnimationFrame(reverseTick);
+    };
+
+    v.addEventListener('ended', onEnded);
+    v.play().catch(() => {});
+    return () => {
+      v.removeEventListener('ended', onEnded);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ['start start', 'end start'],
@@ -70,6 +110,7 @@ export default function HeroMorph() {
           className="relative z-10 overflow-hidden"
         >
           <video
+            ref={videoRef}
             className="absolute inset-0 h-full w-full object-cover [filter:saturate(0.7)_brightness(0.78)]"
             src="/hero/heroo.mp4"
             poster="/hero/city.jpg"
