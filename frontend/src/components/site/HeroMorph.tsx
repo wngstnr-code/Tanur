@@ -136,12 +136,22 @@ export default function HeroMorph() {
           <div className="mb-4 text-center text-[12px] uppercase tracking-[0.18em] text-white/80">
             Scroll to explore ↓
           </div>
-          <div className="flex flex-nowrap items-center justify-center gap-x-2.5 overflow-x-auto border-t border-white/15 px-4 py-4 sm:flex-wrap sm:gap-x-10 sm:px-6 sm:py-5">
-            {partners.map((p) => (
-              <span key={p} className="whitespace-nowrap font-display text-[10px] font-medium text-white/70 sm:text-[15px]">
-                {p}
-              </span>
-            ))}
+          <div className="overflow-hidden border-t border-white/15 py-4 sm:py-5">
+            {/* seamless left-scrolling marquee: 4 copies, translate by -50% (= 2 copies) */}
+            <motion.div
+              className="flex w-max"
+              animate={{ x: ['0%', '-50%'] }}
+              transition={{ duration: 26, ease: 'linear', repeat: Infinity }}
+            >
+              {[...partners, ...partners, ...partners, ...partners].map((p, i) => (
+                <span
+                  key={i}
+                  className="whitespace-nowrap px-5 font-display text-[12px] font-medium text-white/70 sm:px-8 sm:text-[15px]"
+                >
+                  {p}
+                </span>
+              ))}
+            </motion.div>
           </div>
         </motion.div>
       </div>
