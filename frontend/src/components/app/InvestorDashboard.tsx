@@ -341,17 +341,15 @@ function humanError(e: unknown): string {
 function ConnectGate({ ready, onConnect }: { ready: boolean; onConnect: () => void }) {
   return (
     <main className="grid min-h-screen place-items-center bg-bg px-5 py-20">
-      <div className="flex w-full max-w-md flex-col items-center text-center">
-        <div className="grid h-20 w-20 place-items-center rounded-2xl border border-line bg-bg-2 shadow-card">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/tanur_dark.svg" alt="Tanur" className="h-11 w-11" />
-        </div>
-        <h1 className="mt-7 font-display text-3xl font-semibold tracking-tighter2 text-ink sm:text-4xl">
+      <div className="flex w-full max-w-xl flex-col items-center text-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/tanur_dark.svg" alt="Tanur" className="h-28 w-28" />
+        <h1 className="mt-4 font-display text-3xl font-semibold tracking-tighter2 text-ink sm:text-4xl">
           Your nickel revenue position
         </h1>
-        <p className="mt-3 max-w-sm font-serif text-lg leading-relaxed text-muted">
-          Connect a Stellar wallet to view your TANUR holdings and claim USDC yield
-          from verified Indonesian nickel production.
+        <p className="mt-3 max-w-xl font-serif text-lg leading-relaxed text-muted">
+          Connect a Stellar wallet to view your TANUR holdings and claim USDC
+          yield from verified Indonesian nickel production.
         </p>
 
         <button
@@ -362,15 +360,7 @@ function ConnectGate({ ready, onConnect }: { ready: boolean; onConnect: () => vo
           {ready ? 'Connect wallet' : 'Loading…'}
         </button>
 
-        <div className="mt-4 flex items-center gap-2 font-mono text-[11px] text-faint">
-          <span>Freighter</span>
-          <span className="text-line-2">·</span>
-          <span>Lobstr</span>
-          <span className="text-line-2">·</span>
-          <span>xBull</span>
-        </div>
-
-        <Link href="/" className="mt-8 text-sm text-muted transition-colors hover:text-ink">
+        <Link href="/" className="mt-4 text-sm text-muted transition-colors hover:text-ink">
           ← Back to site
         </Link>
       </div>
