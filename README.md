@@ -42,6 +42,7 @@ point of an RWA is, for nickel, the moat.
 - **Real-world asset → on-chain rail.** A verified real economic activity (Indonesian nickel production) is connected to blockchain infrastructure, with the mint cryptographically tied to the verified epoch.
 - **Local financial access.** Retail investors — Indonesian and global — can hold a fractional, liquid claim on a national commodity that was previously inaccessible.
 - **Emerging-market-native settlement.** Buys, yield, and claims settle in **USDC on Stellar** — low fees and fast finality, exactly the profile local finance needs.
+- **Rupiah off-ramp via local anchors (roadmap).** The portfolio already prices positions in Rupiah; Stellar's anchor network closes the loop to local money: claimed USDC yield → **SEP-24** interactive withdraw through an **IDR anchor** → Rupiah in an Indonesian bank account. Tanur's KYC is anchor-ready by construction — the `AUTH_REQUIRED` trustline gate maps directly onto the **SEP-12** KYC flow anchors already speak, so no second onboarding is needed. This is the last mile that turns a tokenized national asset into spendable local currency.
 
 ## Architecture
 
