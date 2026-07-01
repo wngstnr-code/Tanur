@@ -89,13 +89,13 @@ export default function HeroMorph() {
                 style={{ x: leftX, scale: titleScale, color: titleColor, textShadow: titleShadow }}
                 className="absolute right-1/2 origin-right whitespace-nowrap pr-[0.14em] text-right font-display text-4xl font-semibold tracking-tighter2 lg:text-[54px]"
               >
-                The open
+                Real nickel.
               </motion.h1>
               <motion.h1
                 style={{ x: rightX, scale: titleScale, color: titleColor, textShadow: titleShadow }}
                 className="absolute left-1/2 origin-left whitespace-nowrap pl-[0.14em] text-left font-display text-4xl font-semibold tracking-tighter2 lg:text-[54px]"
               >
-                nickel economy.
+                Real yield.
               </motion.h1>
             </div>
           ) : (
@@ -107,13 +107,13 @@ export default function HeroMorph() {
                 style={{ scale: titleScale, color: titleColor, textShadow: titleShadow }}
                 className="whitespace-nowrap font-display font-semibold leading-[1.04] tracking-tighter2 text-[clamp(1.9rem,9vw,3.25rem)]"
               >
-                The open
+                Real nickel.
               </motion.h1>
               <motion.h1
                 style={{ scale: titleScale, color: titleColor, textShadow: titleShadow }}
                 className="whitespace-nowrap font-display font-semibold leading-[1.04] tracking-tighter2 text-[clamp(1.9rem,9vw,3.25rem)]"
               >
-                nickel economy.
+                Real yield.
               </motion.h1>
             </motion.div>
           )}
