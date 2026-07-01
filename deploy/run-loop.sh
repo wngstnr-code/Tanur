@@ -51,7 +51,8 @@ stellar tx new manage-sell-offer --source tanur-admin --network "$NET" \
 echo "▶ 1c. Snapshot entitlements → Merkle root (off-chain, agents/merkle.py)"
 # 100 USDC split pro-rata by the TANUR snapshot: KYC 30k/50k = 60 USDC, treasury 40.
 PY="$DIR/../agents/.venv/bin/python"
-SNAP=$("$PY" "$DIR/../agents/merkle.py" "[[\"$KYC\",600000000],[\"$ADMIN\",400000000]]")
+# Pass the funded total (100 USDC = 1e9 stroops) so merkle.py asserts Σ = funded.
+SNAP=$("$PY" "$DIR/../agents/merkle.py" "[[\"$KYC\",600000000],[\"$ADMIN\",400000000]]" 1000000000)
 ROOT_HEX=$(echo "$SNAP" | python3 -c "import sys,json;print(json.load(sys.stdin)['root'])")
 KYC_AMT=$(echo "$SNAP" | python3 -c "import sys,json;print(json.load(sys.stdin)['claims']['$KYC']['amount'])")
 KYC_PROOF=$(echo "$SNAP" | python3 -c "import sys,json;print(json.dumps(json.load(sys.stdin)['claims']['$KYC']['proof']))")

@@ -20,20 +20,20 @@ export const LOOP_STEPS: LoopStep[] = [
     title: 'Record + mint',
     desc: 'AI oracle records a verified nickel epoch (LME+HPM+Antam); TanurVault mints TANUR atomically from it.',
     method: 'record_epoch',
-    tx: '3bae18643567541fe4b7965cf3b8776738212a314da17be2d6e94a1f91a84994',
+    tx: 'd782b72aa9e929b074b86785a21e7c29a63579614c5d3ded82a9fa3c7e036522',
   },
   {
     n: 2,
     title: 'Fund yield',
     desc: 'Nickel revenue is funded into TanurYield as 100 USDC for the epoch — a 30-day claim window opens.',
     method: 'fund_epoch',
-    tx: 'b6afebd3052ec33a8494b25cddc96ce8f865590629575809c452d4dcc0540fec',
+    tx: 'de14f90c0ade1ceaed33d26db4ab1d9edecf29b0864e35767a3d81e9640f5be8',
   },
   {
     n: 3,
     title: 'Claim USDC',
     desc: 'A KYC-authorized holder claims 60 USDC (pro-rata), gated by a cross-contract KYC read to the Vault.',
     method: 'claim',
-    tx: 'f13a37d61618e80b789bfae3b5966f2a1e59281ee90b2d3f2748503e5870dcb5',
+    tx: 'c56180c3deeb62389a32526d97ab6b2335fc0bc2aec7845eec2052ee7c344067',
   },
 ];

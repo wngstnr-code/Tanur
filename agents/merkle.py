@@ -35,10 +35,25 @@ def _node(a: bytes, b: bytes) -> bytes:
     return hashlib.sha256(lo + hi).digest()
 
 
-def build_tree(entries: list[tuple[str, int]]):
-    """Return (root_hex, {pubkey: {"amount", "proof"[hex]}}) for the snapshot."""
+def build_tree(entries: list[tuple[str, int]], expected_total: int | None = None):
+    """Return (root_hex, {pubkey: {"amount", "proof"[hex]}}) for the snapshot.
+
+    Guards: rejects an empty snapshot, duplicate holders (which would make claims
+    ambiguous), and non-positive amounts. If `expected_total` is given, asserts the
+    entitlements sum to it (i.e. equals the epoch's funded USDC) so no holder is
+    short-changed and nothing is left un-sweepable by accident.
+    """
     if not entries:
         raise ValueError("empty snapshot")
+
+    pubkeys = [pk for pk, _ in entries]
+    if len(set(pubkeys)) != len(pubkeys):
+        raise ValueError("duplicate holder in snapshot — entitlements would be ambiguous")
+    if any(amt <= 0 for _, amt in entries):
+        raise ValueError("non-positive entitlement in snapshot")
+    total = sum(amt for _, amt in entries)
+    if expected_total is not None and total != expected_total:
+        raise ValueError(f"entitlements sum {total} != funded {expected_total}")
 
     leaves = [leaf_hash(pk, amt) for pk, amt in entries]
 
@@ -80,5 +95,6 @@ def build_tree(entries: list[tuple[str, int]]):
 if __name__ == "__main__":
     entries = json.loads(sys.argv[1])
     entries = [(e[0], int(e[1])) for e in entries]
-    root_hex, claims = build_tree(entries)
+    expected_total = int(sys.argv[2]) if len(sys.argv) > 2 else None
+    root_hex, claims = build_tree(entries, expected_total)
     print(json.dumps({"root": root_hex, "claims": claims}, indent=2))

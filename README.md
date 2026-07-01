@@ -51,9 +51,9 @@ record + atomic mint → fund USDC → KYC-gated claim. Verified transactions:
 
 | Step | Tx |
 |---|---|
-| 1. `record_epoch` (+ mint TANUR) | [`3bae1864…`](https://stellar.expert/explorer/testnet/tx/3bae18643567541fe4b7965cf3b8776738212a314da17be2d6e94a1f91a84994) |
-| 2. `fund_epoch` (100 USDC) | [`b6afebd3…`](https://stellar.expert/explorer/testnet/tx/b6afebd3052ec33a8494b25cddc96ce8f865590629575809c452d4dcc0540fec) |
-| 3. `claim` (60 USDC, Merkle proof, KYC-gated) | [`f13a37d6…`](https://stellar.expert/explorer/testnet/tx/f13a37d61618e80b789bfae3b5966f2a1e59281ee90b2d3f2748503e5870dcb5) |
+| 1. `record_epoch` (+ mint TANUR) | [`d782b72a…`](https://stellar.expert/explorer/testnet/tx/d782b72aa9e929b074b86785a21e7c29a63579614c5d3ded82a9fa3c7e036522) |
+| 2. `fund_epoch` (100 USDC) | [`de14f90c…`](https://stellar.expert/explorer/testnet/tx/de14f90c0ade1ceaed33d26db4ab1d9edecf29b0864e35767a3d81e9640f5be8) |
+| 3. `claim` (60 USDC, Merkle proof, KYC-gated) | [`c56180c3…`](https://stellar.expert/explorer/testnet/tx/c56180c3deeb62389a32526d97ab6b2335fc0bc2aec7845eec2052ee7c344067) |
 
 ## Run it
 
