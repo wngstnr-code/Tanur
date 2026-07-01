@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Reveal } from '@/components/motion/Reveal';
-import { LOOP_STEPS, txUrl, contractUrl } from '@/lib/onchain';
-import { CONTRACTS, ASSETS } from '@/lib/config';
+import { LOOP_STEPS, txUrl } from '@/lib/onchain';
 
 // Short, stable result per step (the mint amount varies by epoch, so keep it qualitative).
 const RESULT: Record<string, string> = {
@@ -12,12 +11,6 @@ const RESULT: Record<string, string> = {
   fund_epoch: '100 USDC funded · 30-day window',
   claim: '60 USDC claimed · Merkle proof',
 };
-
-const CONTRACT_LINKS: [string, string][] = [
-  ['TanurVault', CONTRACTS.vault],
-  ['TanurYield', CONTRACTS.yield],
-  ['TANUR · SAC', ASSETS.tanur.sac],
-];
 
 export default function OnChainProof() {
   const [active, setActive] = useState(0);
@@ -72,7 +65,7 @@ export default function OnChainProof() {
                   layout
                   className={`grid h-9 w-9 place-items-center rounded-full border font-mono text-[13px] ${
                     isActive
-                      ? 'border-orange/40 bg-orange/[0.06] text-orange'
+                      ? 'border-line text-ink'
                       : 'border-line-2 text-faint'
                   }`}
                 >
@@ -126,32 +119,6 @@ export default function OnChainProof() {
             );
           })}
         </div>
-
-        {/* verified contracts strip */}
-        <Reveal delay={0.1}>
-          <div className="mt-5 flex flex-col gap-4 rounded-2xl border border-line bg-card px-7 py-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="h-2 w-2 rounded-full bg-brand" />
-              <span className="text-[13px] text-muted">
-                Upgradeable &amp; source-verified — reproducible CI build, matched on
-                StellarExpert.
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              {CONTRACT_LINKS.map(([name, id]) => (
-                <a
-                  key={name}
-                  href={contractUrl(id)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-[12px] text-ink/70 transition-colors hover:text-brand"
-                >
-                  {name} ↗
-                </a>
-              ))}
-            </div>
-          </div>
-        </Reveal>
       </div>
     </section>
   );
