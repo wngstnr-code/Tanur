@@ -18,7 +18,7 @@ Two Soroban contracts + a native Stellar asset (TANUR) exposed via its SAC:
 | **TanurVault** (Soroban) | `record_epoch` (oracle-gated) + rolling oracle reputation + **atomic mint** of TANUR via the SAC from the state it just recorded. Native KYC mirror for cross-contract gating. |
 | **TanurYield** (Soroban) | Holds per-epoch USDC; **Merkle-proof `claim`**, **KYC-gated** via a cross-contract read to the Vault; funds only Vault-recorded epochs; window + sweep. |
 | **TANUR** (Stellar Asset + SAC) | Native asset, tradeable on SDEX. KYC = `AUTH_REQUIRED` trustline authorized by the issuer. |
-| **Oracle Agent** (Python) | LME + HPM(ESDM) + Antam → cross-validate → **Gemini anomaly gate** → post on-chain via stellar-sdk. |
+| **Oracle Agent** (Python) | LME + HPM(ESDM) + Antam → cross-validate → **deterministic plausibility gate** → **Gemini reasoning gate** → post on-chain via stellar-sdk. The trust guarantee is deterministic; the LLM adds reasoning on top, it is never the sole gate. |
 | **Market Analyst** (Python, stretch) | Closed loop: read chain → Gemini → tune GORR on-chain within ±100 bps / [1%,10%] safety rails. |
 | **Frontend** (Next.js) | Connect Freighter (Stellar Wallets Kit) → buy TANUR (USDC via SDEX) → position in USD + Rupiah (`open.er-api.com`) → claim USDC. |
 
@@ -51,9 +51,9 @@ record + atomic mint → fund USDC → KYC-gated claim. Verified transactions:
 
 | Step | Tx |
 |---|---|
-| 1. `record_epoch` (+ mint TANUR) | [`24d588ea…`](https://stellar.expert/explorer/testnet/tx/24d588ea6b7a44aa6cf95e56d93c050c75834df971678b3fa2c5c1ea0e62095e) |
-| 2. `fund_epoch` (100 USDC) | [`dc48b14c…`](https://stellar.expert/explorer/testnet/tx/dc48b14c4ac454ec58e2edf2ecff7e9d466bde7429ed7ad784959ecb016d6187) |
-| 3. `claim` (60 USDC, pro-rata, KYC-gated) | [`e49a65b5…`](https://stellar.expert/explorer/testnet/tx/e49a65b54c21cf2b92df21a3a6de7bd54bff9d9f7652eb6dc572068b969e3dc5) |
+| 1. `record_epoch` (+ mint TANUR) | [`3bae1864…`](https://stellar.expert/explorer/testnet/tx/3bae18643567541fe4b7965cf3b8776738212a314da17be2d6e94a1f91a84994) |
+| 2. `fund_epoch` (100 USDC) | [`b6afebd3…`](https://stellar.expert/explorer/testnet/tx/b6afebd3052ec33a8494b25cddc96ce8f865590629575809c452d4dcc0540fec) |
+| 3. `claim` (60 USDC, Merkle proof, KYC-gated) | [`f13a37d6…`](https://stellar.expert/explorer/testnet/tx/f13a37d61618e80b789bfae3b5966f2a1e59281ee90b2d3f2748503e5870dcb5) |
 
 ## Run it
 

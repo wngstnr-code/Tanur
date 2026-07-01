@@ -23,7 +23,7 @@ const sans = Space_Grotesk({ variable: '--font-sans', subsets: ['latin'] });
 const mono = JetBrains_Mono({ variable: '--font-mono', subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Tanur — Tokenized Indonesian Nickel Revenue',
+  title: 'Tanur',
   description:
     'Own a fractional, yield-bearing claim on Indonesia\'s nickel revenue. Buy TANUR with USDC, earn USDC yield from verified production — on Stellar, with an AI oracle that rejects bad data before it hits the chain.',
 };

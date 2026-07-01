@@ -56,6 +56,14 @@ DEMO_ANOMALY = os.getenv("DEMO_ANOMALY", "off").lower() == "on"
 MAX_SOURCE_DIVERGENCE_PCT = 10.0
 MIN_VALIDATION_SCORE = 60
 
+# Deterministic plausibility band for the nickel price (USD cents/ton). This is a
+# hard, non-AI gate: the trust guarantee must NOT depend on the LLM's mood (an LLM
+# can flip-flop on the same input — §6.4). Gemini adds reasoning ON TOP of this
+# floor for in-band-but-suspicious cases; it never replaces it.
+MIN_PLAUSIBLE_PRICE_CENTS = 500_000    # $5,000/ton
+MAX_PLAUSIBLE_PRICE_CENTS = 4_000_000  # $40,000/ton
+MAX_PLAUSIBLE_TONNES = 50_000          # per-epoch Ni-content sanity ceiling
+
 # HPM is derived from the LME reference × Ni-content correction (Kepmen 144.K/2026).
 HPM_NI_FACTOR = 0.98  # ~official reference sits just under the LME global print
 
@@ -231,7 +239,8 @@ score_adjustment: integer -30..+10 (negative if issues). recommendation: "APPROV
         adjustment = int(result.get("score_adjustment", 0))
         analysis = result.get("analysis", "")
         anomalies = result.get("anomalies", [])
-        recommendation = result.get("recommendation", "APPROVE")
+        recommendation = str(result.get("recommendation", "APPROVE"))
+        trustworthy = result.get("trustworthy", True)
         adjusted = max(0, min(100, base_score + adjustment))
 
         log.info(f"[GEMINI] adjustment {adjustment:+d} → {adjusted} | {recommendation}")
@@ -239,7 +248,11 @@ score_adjustment: integer -30..+10 (negative if issues). recommendation: "APPROV
         for a in anomalies:
             log.warning(f"[GEMINI] ⚠ Anomaly: {a}")
 
-        if recommendation == "REJECT":
+        # Robust veto: match any REJECT phrasing (case/format-insensitive), and also
+        # honour an explicit trustworthy=false. The score-based path (adjusted < min)
+        # is enforced separately by the caller — this is the hard AI veto.
+        vetoed = ("REJECT" in recommendation.upper()) or (trustworthy is False)
+        if vetoed:
             log.error("[GEMINI] AI VETO — epoch rejected before reaching chain")
             return 0, f"REJECTED by AI: {analysis}"
         return adjusted, analysis
@@ -289,6 +302,20 @@ async def run_oracle_cycle() -> Optional[str]:
         tonnes_ni, price_cents, score, sources = compute_validation_score(readings)
         if score < MIN_VALIDATION_SCORE:
             log.error(f"[ORACLE] Score {score} < {MIN_VALIDATION_SCORE} — REJECTED (stats)")
+            return None
+
+        # Deterministic hard gate — always runs, independent of the LLM. Catches
+        # egregious values (e.g. an internally-consistent but absurd price spike)
+        # every time, so the trust guarantee never rests on the LLM alone.
+        if not (MIN_PLAUSIBLE_PRICE_CENTS <= price_cents <= MAX_PLAUSIBLE_PRICE_CENTS):
+            log.error(
+                f"[ORACLE] Price ${price_cents/100:,.0f}/ton outside plausible band "
+                f"[${MIN_PLAUSIBLE_PRICE_CENTS/100:,.0f}, "
+                f"${MAX_PLAUSIBLE_PRICE_CENTS/100:,.0f}] — REJECTED (deterministic gate)"
+            )
+            return None
+        if tonnes_ni <= 0 or tonnes_ni > MAX_PLAUSIBLE_TONNES:
+            log.error(f"[ORACLE] Production {tonnes_ni:,} t outside sanity ceiling — REJECTED")
             return None
 
         score, analysis = await analyze_with_gemini(
