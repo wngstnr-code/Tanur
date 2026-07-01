@@ -37,8 +37,16 @@ if python3 -c "import sys; sys.exit(0 if float('$USDC_BAL')<100 else 1)"; then
 fi
 
 echo "▶ 1. Distribute 30,000 TANUR to the KYC investor (so they have a position)"
+# TANUR is a 7-decimal asset: 30,000 TANUR = 30_000 * 10^7 stroops.
 stellar contract invoke --id "$TANUR_SAC" --source tanur-admin --network "$NET" \
-  -- transfer --from "$ADMIN" --to "$KYC" --amount 30000 2>&1 | tail -1 || true
+  -- transfer --from "$ADMIN" --to "$KYC" --amount 300000000000 2>&1 | tail -1 || true
+
+echo "▶ 1b. Post a TANUR/USDC sell offer on SDEX (treasury) so the in-app Buy works"
+# Sell 5,000 TANUR (5_000 * 10^7 stroops) at 0.10 USDC each (price = 1:10).
+TANUR_ASSET="TANUR:$(j "['assets']['tanur']['issuer']")"
+stellar tx new manage-sell-offer --source tanur-admin --network "$NET" \
+  --selling "$TANUR_ASSET" --buying "$USDC_ASSET" \
+  --amount 50000000000 --price 1:10 --fee 1000 2>&1 | tail -1 || true
 
 echo "▶ 2. Fund epoch $EPOCH with 100 USDC (30-day claim window)"
 FUND_OUT=$(stellar contract invoke --id "$YIELD" --source tanur-admin --network "$NET" \

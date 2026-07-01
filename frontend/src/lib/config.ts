@@ -11,15 +11,15 @@ export const NETWORK = {
 } as const;
 
 export const CONTRACTS = {
-  vault: 'CBORXURFYF5RZVFW423IE4VWAVU5AD32ZPYTKVVCCOU3LX7ZPY7OGVMJ',
-  yield: 'CCTXME7WDWRP7G65SYYTFO2YZ5IKVNERMRF6Q6MAWXSURF66FBD6JUWJ',
+  vault: 'CAQIOGWVGICYOXQW6H2XFYN4MLDAFURDGLUTBGF4FL55Z7YKJNZMYPHP',
+  yield: 'CDIF5HDGQAK7O7W776KFB23UCK5QXP2JRNTIFMAXIAOBBILFQJB4RO55',
 } as const;
 
 export const ASSETS = {
   tanur: {
     code: 'TANUR',
-    issuer: 'GCSUJWSUHWHNZYN33UC43TKKJEQNOKXEGY6B5H5TBVYOCFYVF7PONKNP',
-    sac: 'CDXYMTWV32PKGEOYJT4AMOSPO72RLADKLZ2CDWP7YWKTBXATHNAT3M4D',
+    issuer: 'GAWBL7L7U7MN3TAWXMKE4DRX7AC36IUYVXD4QTMGKHSX4NNUOKAVA24I',
+    sac: 'CBI2W5EMERZUVXNIUCMRIMXARDLXZZM6RAHCQDD6OTYBTU7RHL4ET4F3',
   },
   usdc: {
     code: 'USDC',
@@ -28,10 +28,9 @@ export const ASSETS = {
   },
 } as const;
 
-// TANUR is minted as whole-token accounting units on-chain (the vault's mint
-// formula tonnes×rate×gorr/10_000 is NOT scaled by 10^decimals), so we display
-// the raw integer balance as-is. USDC is a genuine 7-decimal asset.
-export const TANUR_DECIMALS = 0;
+// Both TANUR and USDC are 7-decimal Stellar assets. The vault scales its
+// whole-token mint by 10^7 so wallets/SDEX/Horizon display TANUR naturally.
+export const TANUR_DECIMALS = 7;
 export const USDC_DECIMALS = 7;
 
 // Investor onboarding contact for KYC (permissioned RWA — issuer authorizes the
@@ -41,6 +40,7 @@ export const ACCESS_EMAIL =
 
 export type ContractState = {
   oracle_reputation: number;
+  oracle_submission_count: number;
   total_minted: number;
   total_tonnes: number;
   epoch_count: number;

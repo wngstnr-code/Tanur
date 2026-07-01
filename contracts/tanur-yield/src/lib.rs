@@ -13,7 +13,7 @@ use soroban_sdk::{
 };
 
 contractmeta!(key = "name", val = "TanurYield");
-contractmeta!(key = "binver", val = "0.2.0");
+contractmeta!(key = "binver", val = "0.3.0");
 contractmeta!(key = "source", val = "https://github.com/wngstnr-code/Tanur");
 
 const TTL_THRESHOLD: u32 = 17_280;
