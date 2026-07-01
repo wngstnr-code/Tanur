@@ -1,19 +1,24 @@
 #![no_std]
 //! TanurYield — holds per-epoch nickel revenue in USDC and pays it out to TANUR
-//! holders, pro-rata, KYC-gated (Tanur-Concept §6.1).
+//! holders via a **Merkle claim** (Tanur-Concept §6.1, §13).
 //!
-//! Kept separate from the Vault because it custodies funds: isolating the money
-//! from the mint/record logic limits blast radius. KYC is enforced by a
-//! cross-contract `is_kyc` read against the Vault, so there is a single source of
-//! truth for who may hold and claim TANUR.
+//! At fund time the operator snapshots holder balances off-chain, computes each
+//! holder's exact USDC entitlement, and commits a Merkle root on-chain. Claims
+//! present `(amount, proof)`; the amount is fixed by the snapshot, so moving TANUR
+//! during the window cannot change anyone's entitlement — this closes the
+//! live-balance "shuffle" gaming that a pro-rata-on-live-balance design allows.
+//!
+//! Kept separate from the Vault because it custodies funds. KYC is enforced by a
+//! cross-contract `is_kyc` read; funding is refused for epochs the Vault never
+//! recorded (`epoch_exists`).
 
 use soroban_sdk::{
     contract, contractclient, contracterror, contractevent, contractimpl, contractmeta,
-    contracttype, token::Client as TokenClient, Address, BytesN, Env,
+    contracttype, token::Client as TokenClient, xdr::ToXdr, Address, Bytes, BytesN, Env, Vec,
 };
 
 contractmeta!(key = "name", val = "TanurYield");
-contractmeta!(key = "binver", val = "0.3.0");
+contractmeta!(key = "binver", val = "0.4.0");
 contractmeta!(key = "source", val = "https://github.com/wngstnr-code/Tanur");
 
 const TTL_THRESHOLD: u32 = 17_280;
@@ -23,7 +28,7 @@ const TTL_EXTEND: u32 = 518_400;
 #[contractclient(name = "VaultClient")]
 pub trait VaultInterface {
     fn is_kyc(env: Env, account: Address) -> bool;
-    fn get_total_minted(env: Env) -> i128;
+    fn epoch_exists(env: Env, epoch: u32) -> bool;
 }
 
 #[contracttype]
@@ -43,8 +48,8 @@ pub enum DataKey {
 pub struct EpochInfo {
     pub funded: i128,
     pub claimed: i128,
-    /// TANUR supply snapshotted at fund time — the pro-rata denominator.
-    pub snapshot_supply: i128,
+    /// Merkle root over the (holder, amount) entitlement snapshot.
+    pub merkle_root: BytesN<32>,
     pub deadline: u64,
 }
 
@@ -54,7 +59,7 @@ pub struct EpochInfo {
 pub enum Error {
     NotInitialized = 1,
     InvalidAmount = 2,
-    EpochNotFunded = 3,
+    EpochNotRecorded = 3,
     AlreadyFunded = 4,
     NotKyc = 5,
     EpochNotFound = 6,
@@ -64,13 +69,15 @@ pub enum Error {
     NothingToClaim = 10,
     Paused = 11,
     Overflow = 12,
+    InvalidProof = 13,
+    ExceedsFunded = 14,
 }
 
 #[contractevent(topics = ["epoch_funded"])]
 pub struct EpochFunded {
     pub epoch: u32,
     pub funded: i128,
-    pub snapshot_supply: i128,
+    pub merkle_root: BytesN<32>,
     pub deadline: u64,
 }
 
@@ -94,13 +101,14 @@ impl TanurYield {
         s.set(&DataKey::TanurSac, &tanur_sac);
     }
 
-    /// Fund an epoch's yield with USDC and open a claim window of `window_secs`.
-    /// Snapshots TANUR supply now so later claims divide against a fixed total.
+    /// Fund an epoch's yield with USDC and commit the entitlement Merkle root.
+    /// Refuses epochs the Vault never recorded, and double funding.
     pub fn fund_epoch(
         env: Env,
         funder: Address,
         epoch: u32,
         amount: i128,
+        merkle_root: BytesN<32>,
         window_secs: u64,
     ) -> Result<(), Error> {
         funder.require_auth();
@@ -113,25 +121,24 @@ impl TanurYield {
             return Err(Error::AlreadyFunded);
         }
 
-        let usdc: Address = env
+        // #4 — only fund epochs the oracle actually recorded in the Vault.
+        let vault: Address = env
             .storage()
             .instance()
-            .get(&DataKey::Usdc)
+            .get(&DataKey::Vault)
             .ok_or(Error::NotInitialized)?;
-        TokenClient::new(&env, &usdc).transfer(
-            &funder,
-            &env.current_contract_address(),
-            &amount,
-        );
+        if !VaultClient::new(&env, &vault).epoch_exists(&epoch) {
+            return Err(Error::EpochNotRecorded);
+        }
 
-        let vault: Address = env.storage().instance().get(&DataKey::Vault).unwrap();
-        let snapshot_supply = VaultClient::new(&env, &vault).get_total_minted();
+        let usdc: Address = env.storage().instance().get(&DataKey::Usdc).unwrap();
+        TokenClient::new(&env, &usdc).transfer(&funder, &env.current_contract_address(), &amount);
+
         let deadline = env.ledger().timestamp() + window_secs;
-
         let info = EpochInfo {
             funded: amount,
             claimed: 0,
-            snapshot_supply,
+            merkle_root: merkle_root.clone(),
             deadline,
         };
         env.storage().persistent().set(&DataKey::Epoch(epoch), &info);
@@ -142,20 +149,29 @@ impl TanurYield {
         EpochFunded {
             epoch,
             funded: amount,
-            snapshot_supply,
+            merkle_root,
             deadline,
         }
         .publish(&env);
         Ok(())
     }
 
-    /// Claim an epoch's USDC share. KYC-gated via the Vault; pays
-    /// `funded × holder_TANUR / snapshot_supply`, capped so total claims never
-    /// exceed the funded amount, and blocks double claims.
-    pub fn claim(env: Env, holder: Address, epoch: u32) -> Result<i128, Error> {
+    /// Claim a fixed USDC entitlement by presenting a Merkle proof. KYC-gated;
+    /// the amount is bound to the snapshot, so token transfers during the window
+    /// cannot change it. One claim per (epoch, holder); only inside the window.
+    pub fn claim(
+        env: Env,
+        holder: Address,
+        epoch: u32,
+        amount: i128,
+        proof: Vec<BytesN<32>>,
+    ) -> Result<i128, Error> {
         holder.require_auth();
         require_not_paused(&env)?;
         bump_instance(&env);
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
 
         let vault: Address = env
             .storage()
@@ -179,30 +195,22 @@ impl TanurYield {
             return Err(Error::AlreadyClaimed);
         }
 
-        let tanur_sac: Address = env.storage().instance().get(&DataKey::TanurSac).unwrap();
-        let balance = TokenClient::new(&env, &tanur_sac).balance(&holder);
-        if balance <= 0 || info.snapshot_supply <= 0 {
-            return Err(Error::NothingToClaim);
+        // Verify (holder, amount) is in the committed snapshot.
+        let leaf = leaf_hash(&env, &holder, amount);
+        if !verify_proof(&env, &info.merkle_root, leaf, &proof) {
+            return Err(Error::InvalidProof);
         }
 
-        // checked mul/div — overflow fails cleanly instead of panicking.
-        let mut share = info
-            .funded
-            .checked_mul(balance)
-            .ok_or(Error::Overflow)?
-            / info.snapshot_supply;
-        let remaining = info.funded - info.claimed;
-        if share > remaining {
-            share = remaining;
-        }
-        if share <= 0 {
-            return Err(Error::NothingToClaim);
+        // Defensive: the snapshot sum should equal `funded`; never overpay.
+        let new_claimed = info.claimed.checked_add(amount).ok_or(Error::Overflow)?;
+        if new_claimed > info.funded {
+            return Err(Error::ExceedsFunded);
         }
 
         let usdc: Address = env.storage().instance().get(&DataKey::Usdc).unwrap();
-        TokenClient::new(&env, &usdc).transfer(&env.current_contract_address(), &holder, &share);
+        TokenClient::new(&env, &usdc).transfer(&env.current_contract_address(), &holder, &amount);
 
-        info.claimed += share;
+        info.claimed = new_claimed;
         env.storage().persistent().set(&DataKey::Epoch(epoch), &info);
         env.storage()
             .persistent()
@@ -215,10 +223,10 @@ impl TanurYield {
         Claimed {
             epoch,
             holder,
-            amount: share,
+            amount,
         }
         .publish(&env);
-        Ok(share)
+        Ok(amount)
     }
 
     /// Admin: after the window closes, sweep unclaimed USDC back to admin.
@@ -291,6 +299,31 @@ impl TanurYield {
             .get(&DataKey::Claimed(epoch, holder))
             .unwrap_or(false)
     }
+}
+
+/// Leaf = sha256( XDR(ScVal::Address(holder)) ++ XDR(ScVal::I128(amount)) ).
+/// The off-chain snapshot tool reproduces this exactly (agents/merkle.py).
+fn leaf_hash(env: &Env, holder: &Address, amount: i128) -> BytesN<32> {
+    let mut buf: Bytes = holder.clone().to_xdr(env);
+    buf.append(&amount.to_xdr(env));
+    env.crypto().sha256(&buf).into()
+}
+
+/// Verify a Merkle proof using sorted-pair hashing (no direction bits needed):
+/// parent = sha256( min(a,b) ++ max(a,b) ).
+fn verify_proof(env: &Env, root: &BytesN<32>, leaf: BytesN<32>, proof: &Vec<BytesN<32>>) -> bool {
+    let mut computed = leaf;
+    for sib in proof.iter() {
+        let (a, b) = if computed <= sib {
+            (computed.clone(), sib.clone())
+        } else {
+            (sib.clone(), computed.clone())
+        };
+        let mut buf = Bytes::from_array(env, &a.to_array());
+        buf.append(&Bytes::from_array(env, &b.to_array()));
+        computed = env.crypto().sha256(&buf).into();
+    }
+    &computed == root
 }
 
 fn require_admin(env: &Env) -> Result<(), Error> {

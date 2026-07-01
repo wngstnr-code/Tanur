@@ -1,36 +1,35 @@
 #![cfg(test)]
 use super::*;
 use soroban_sdk::{
-    contract, contractimpl, symbol_short,
+    contract, contractimpl,
     testutils::{Address as _, Ledger as _},
-    token, Address, Env,
+    token, vec, Address, Bytes, BytesN, Env, Vec,
 };
 
-// A minimal stand-in for TanurVault exposing just the cross-contract surface
-// TanurYield depends on — keeps the test decoupled from the vault crate.
+// Stand-in Vault exposing just the surface TanurYield needs: KYC + epoch_exists.
 #[contract]
 pub struct MockVault;
 
 #[contractimpl]
 impl MockVault {
-    pub fn __constructor(env: Env, total_minted: i128) {
-        env.storage()
-            .instance()
-            .set(&symbol_short!("TOTAL"), &total_minted);
-    }
     pub fn set_kyc(env: Env, account: Address, approved: bool) {
-        env.storage().persistent().set(&account, &approved);
+        env.storage().persistent().set(&(1u32, account), &approved);
     }
     pub fn is_kyc(env: Env, account: Address) -> bool {
-        env.storage().persistent().get(&account).unwrap_or(false)
+        env.storage().persistent().get(&(1u32, account)).unwrap_or(false)
     }
-    pub fn get_total_minted(env: Env) -> i128 {
-        env.storage()
-            .instance()
-            .get(&symbol_short!("TOTAL"))
-            .unwrap_or(0)
+    pub fn set_epoch(env: Env, epoch: u32) {
+        env.storage().persistent().set(&(2u32, epoch), &true);
+    }
+    pub fn epoch_exists(env: Env, epoch: u32) -> bool {
+        env.storage().persistent().get(&(2u32, epoch)).unwrap_or(false)
     }
 }
+
+const FUND: i128 = 10_000;
+const A1: i128 = 6_000; // holder1 entitlement
+const A2: i128 = 4_000; // holder2 entitlement
+const WINDOW: u64 = 1_000;
 
 struct Harness {
     env: Env,
@@ -41,11 +40,18 @@ struct Harness {
     funder: Address,
     holder1: Address,
     holder2: Address,
+    root: BytesN<32>,
+    proof1: Vec<BytesN<32>>,
+    proof2: Vec<BytesN<32>>,
 }
 
-const SUPPLY: i128 = 100_000;
-const FUND: i128 = 10_000;
-const WINDOW: u64 = 1_000;
+// sorted-pair node hash, matching the contract.
+fn node(env: &Env, a: &BytesN<32>, b: &BytesN<32>) -> BytesN<32> {
+    let (x, y) = if a <= b { (a, b) } else { (b, a) };
+    let mut buf = Bytes::from_array(env, &x.to_array());
+    buf.append(&Bytes::from_array(env, &y.to_array()));
+    env.crypto().sha256(&buf).into()
+}
 
 fn setup() -> Harness {
     let env = Env::default();
@@ -57,31 +63,25 @@ fn setup() -> Harness {
     let holder2 = Address::generate(&env);
     let issuer = Address::generate(&env);
 
-    // USDC + TANUR as Stellar assets.
     let usdc_sac = env.register_stellar_asset_contract_v2(issuer.clone());
     let tanur_sac = env.register_stellar_asset_contract_v2(issuer);
-    let usdc_admin = token::StellarAssetClient::new(&env, &usdc_sac.address());
-    let tanur_admin = token::StellarAssetClient::new(&env, &tanur_sac.address());
+    token::StellarAssetClient::new(&env, &usdc_sac.address()).mint(&funder, &FUND);
 
-    // TANUR holders: 60k + 40k = 100k total, matching the snapshot supply.
-    tanur_admin.mint(&holder1, &60_000);
-    tanur_admin.mint(&holder2, &40_000);
-    // Funder has USDC to fund the epoch.
-    usdc_admin.mint(&funder, &FUND);
-
-    let vault_id = env.register(MockVault, (SUPPLY,));
+    let vault_id = env.register(MockVault, ());
     let vault = MockVaultClient::new(&env, &vault_id);
-    vault.set_kyc(&holder1, &true); // holder2 deliberately left un-KYC'd
+    vault.set_kyc(&holder1, &true);
+    vault.set_kyc(&holder2, &true); // holder2 KYC'd too; a non-KYC addr is generated per-test
+    vault.set_epoch(&1); // epoch 1 recorded in the (mock) vault
 
     let yield_id = env.register(
         TanurYield,
-        (
-            admin.clone(),
-            vault_id,
-            usdc_sac.address(),
-            tanur_sac.address(),
-        ),
+        (admin.clone(), vault_id, usdc_sac.address(), tanur_sac.address()),
     );
+
+    // Build a 2-leaf Merkle tree over (holder, amount) entitlements.
+    let leaf1 = leaf_hash(&env, &holder1, A1);
+    let leaf2 = leaf_hash(&env, &holder2, A2);
+    let root = node(&env, &leaf1, &leaf2);
 
     Harness {
         yield_c: TanurYieldClient::new(&env, &yield_id),
@@ -91,86 +91,126 @@ fn setup() -> Harness {
         funder,
         holder1,
         holder2,
+        root,
+        proof1: vec![&env, leaf2],
+        proof2: vec![&env, leaf1],
         env,
     }
 }
 
+fn fund(h: &Harness) {
+    h.yield_c.fund_epoch(&h.funder, &1, &FUND, &h.root, &WINDOW);
+}
+
 #[test]
-fn fund_and_claim_pro_rata() {
+fn fund_and_merkle_claim() {
     let h = setup();
-    h.yield_c.fund_epoch(&h.funder, &1, &FUND, &WINDOW);
+    fund(&h);
     assert_eq!(h.usdc.balance(&h.yield_c.address), FUND);
 
-    // holder1 owns 60k/100k → 60% of 10_000 = 6_000.
-    let got = h.yield_c.claim(&h.holder1, &1);
-    assert_eq!(got, 6_000);
-    assert_eq!(h.usdc.balance(&h.holder1), 6_000);
-    assert!(h.yield_c.has_claimed(&1, &h.holder1));
+    assert_eq!(h.yield_c.claim(&h.holder1, &1, &A1, &h.proof1), A1);
+    assert_eq!(h.usdc.balance(&h.holder1), A1);
+    assert_eq!(h.yield_c.claim(&h.holder2, &1, &A2, &h.proof2), A2);
+    assert_eq!(h.usdc.balance(&h.holder2), A2);
+}
+
+#[test]
+fn reject_wrong_amount_or_proof() {
+    let h = setup();
+    fund(&h);
+    // right holder, wrong amount → leaf doesn't match the committed root.
+    assert_eq!(
+        h.yield_c.try_claim(&h.holder1, &1, &9_999, &h.proof1),
+        Err(Ok(Error::InvalidProof))
+    );
+    // right amount, wrong proof (empty).
+    assert_eq!(
+        h.yield_c.try_claim(&h.holder1, &1, &A1, &Vec::new(&h.env)),
+        Err(Ok(Error::InvalidProof))
+    );
 }
 
 #[test]
 fn reject_double_claim() {
     let h = setup();
-    h.yield_c.fund_epoch(&h.funder, &1, &FUND, &WINDOW);
-    h.yield_c.claim(&h.holder1, &1);
-    let res = h.yield_c.try_claim(&h.holder1, &1);
-    assert_eq!(res, Err(Ok(Error::AlreadyClaimed)));
+    fund(&h);
+    h.yield_c.claim(&h.holder1, &1, &A1, &h.proof1);
+    assert_eq!(
+        h.yield_c.try_claim(&h.holder1, &1, &A1, &h.proof1),
+        Err(Ok(Error::AlreadyClaimed))
+    );
 }
 
 #[test]
 fn reject_non_kyc() {
     let h = setup();
-    h.yield_c.fund_epoch(&h.funder, &1, &FUND, &WINDOW);
-    let res = h.yield_c.try_claim(&h.holder2, &1);
-    assert_eq!(res, Err(Ok(Error::NotKyc)));
+    fund(&h);
+    let stranger = Address::generate(&h.env); // not KYC'd
+    assert_eq!(
+        h.yield_c.try_claim(&stranger, &1, &A1, &h.proof1),
+        Err(Ok(Error::NotKyc))
+    );
+}
+
+#[test]
+fn reject_fund_unrecorded_epoch() {
+    let h = setup();
+    // epoch 7 was never recorded in the vault.
+    assert_eq!(
+        h.yield_c.try_fund_epoch(&h.funder, &7, &FUND, &h.root, &WINDOW),
+        Err(Ok(Error::EpochNotRecorded))
+    );
 }
 
 #[test]
 fn reject_double_fund() {
     let h = setup();
-    h.yield_c.fund_epoch(&h.funder, &1, &FUND, &WINDOW);
-    let res = h.yield_c.try_fund_epoch(&h.funder, &1, &FUND, &WINDOW);
-    assert_eq!(res, Err(Ok(Error::AlreadyFunded)));
-}
-
-#[test]
-fn sweep_after_window() {
-    let h = setup();
-    h.yield_c.fund_epoch(&h.funder, &1, &FUND, &WINDOW);
-    h.yield_c.claim(&h.holder1, &1); // 6_000 out, 4_000 remains
-
-    // Window still open → cannot sweep.
-    assert_eq!(h.yield_c.try_sweep(&1), Err(Ok(Error::WindowOpen)));
-
-    // Advance past deadline, then sweep the remainder to admin.
-    h.env.ledger().set_timestamp(WINDOW + 1);
-    let swept = h.yield_c.sweep(&1);
-    assert_eq!(swept, 4_000);
-    assert_eq!(h.usdc.balance(&h.admin), 4_000);
+    fund(&h);
+    assert_eq!(
+        h.yield_c.try_fund_epoch(&h.funder, &1, &FUND, &h.root, &WINDOW),
+        Err(Ok(Error::AlreadyFunded))
+    );
 }
 
 #[test]
 fn pause_blocks_fund_and_claim() {
     let h = setup();
     h.yield_c.set_paused(&true);
-    // fund is blocked while paused
     assert_eq!(
-        h.yield_c.try_fund_epoch(&h.funder, &1, &FUND, &WINDOW),
+        h.yield_c.try_fund_epoch(&h.funder, &1, &FUND, &h.root, &WINDOW),
         Err(Ok(Error::Paused))
     );
-    // unpause → fund works
     h.yield_c.set_paused(&false);
-    h.yield_c.fund_epoch(&h.funder, &1, &FUND, &WINDOW);
-    // pause again → claim blocked
+    fund(&h);
     h.yield_c.set_paused(&true);
     assert_eq!(
-        h.yield_c.try_claim(&h.holder1, &1),
+        h.yield_c.try_claim(&h.holder1, &1, &A1, &h.proof1),
         Err(Ok(Error::Paused))
     );
-    // unpause → claim works
     h.yield_c.set_paused(&false);
-    assert_eq!(h.yield_c.claim(&h.holder1, &1), 6_000);
-    assert!(!h.yield_c.is_paused());
+    assert_eq!(h.yield_c.claim(&h.holder1, &1, &A1, &h.proof1), A1);
+}
+
+#[test]
+fn sweep_after_window() {
+    let h = setup();
+    fund(&h);
+    h.yield_c.claim(&h.holder1, &1, &A1, &h.proof1); // 6000 out, 4000 remains
+    assert_eq!(h.yield_c.try_sweep(&1), Err(Ok(Error::WindowOpen)));
+    h.env.ledger().set_timestamp(WINDOW + 1);
+    assert_eq!(h.yield_c.sweep(&1), 4_000);
+    assert_eq!(h.usdc.balance(&h.admin), 4_000);
+}
+
+#[test]
+fn claim_after_window_closed() {
+    let h = setup();
+    fund(&h);
+    h.env.ledger().set_timestamp(WINDOW + 1);
+    assert_eq!(
+        h.yield_c.try_claim(&h.holder1, &1, &A1, &h.proof1),
+        Err(Ok(Error::WindowClosed))
+    );
 }
 
 #[test]
@@ -178,17 +218,6 @@ fn rotate_admin() {
     let h = setup();
     let new_admin = Address::generate(&h.env);
     h.yield_c.set_admin(&new_admin);
-    // new admin can pause (old path still works because mock_all_auths is on,
-    // but this at least exercises the rotation write path)
     h.yield_c.set_paused(&true);
     assert!(h.yield_c.is_paused());
-}
-
-#[test]
-fn claim_after_window_closed() {
-    let h = setup();
-    h.yield_c.fund_epoch(&h.funder, &1, &FUND, &WINDOW);
-    h.env.ledger().set_timestamp(WINDOW + 1);
-    let res = h.yield_c.try_claim(&h.holder1, &1);
-    assert_eq!(res, Err(Ok(Error::WindowClosed)));
 }

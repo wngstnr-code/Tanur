@@ -277,8 +277,14 @@ async def run_oracle_cycle() -> Optional[str]:
         ))
 
         if DEMO_ANOMALY:
-            log.warning("[DEMO] Injecting a fake 2.5x LME price spike to test the AI veto")
-            readings[0].price_cents = int((real_price_cents or 1_600_000) * 2.5)
+            # Spike ALL feeds together so cross-validation (divergence) still passes —
+            # the reading is internally consistent but absurdly high in absolute terms.
+            # This is the case only the Gemini reasoning gate can catch (§6.4).
+            log.warning("[DEMO] Injecting an internally-consistent 2.5x price spike "
+                        "across all feeds — only the Gemini gate should veto it")
+            for r in readings:
+                if r.price_cents is not None:
+                    r.price_cents = int(r.price_cents * 2.5)
 
         tonnes_ni, price_cents, score, sources = compute_validation_score(readings)
         if score < MIN_VALIDATION_SCORE:

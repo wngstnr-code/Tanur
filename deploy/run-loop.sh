@@ -48,15 +48,28 @@ stellar tx new manage-sell-offer --source tanur-admin --network "$NET" \
   --selling "$TANUR_ASSET" --buying "$USDC_ASSET" \
   --amount 50000000000 --price 1:10 --fee 1000 2>&1 | tail -1 || true
 
-echo "▶ 2. Fund epoch $EPOCH with 100 USDC (30-day claim window)"
+echo "▶ 1c. Snapshot entitlements → Merkle root (off-chain, agents/merkle.py)"
+# 100 USDC split pro-rata by the TANUR snapshot: KYC 30k/50k = 60 USDC, treasury 40.
+PY="$DIR/../agents/.venv/bin/python"
+SNAP=$("$PY" "$DIR/../agents/merkle.py" "[[\"$KYC\",600000000],[\"$ADMIN\",400000000]]")
+ROOT_HEX=$(echo "$SNAP" | python3 -c "import sys,json;print(json.load(sys.stdin)['root'])")
+KYC_AMT=$(echo "$SNAP" | python3 -c "import sys,json;print(json.load(sys.stdin)['claims']['$KYC']['amount'])")
+KYC_PROOF=$(echo "$SNAP" | python3 -c "import sys,json;print(json.dumps(json.load(sys.stdin)['claims']['$KYC']['proof']))")
+echo "   root: $ROOT_HEX"
+echo "   kyc entitlement: $KYC_AMT stroops, proof: $KYC_PROOF"
+# Persist the proofs so the frontend can serve them to holders.
+echo "$SNAP" > "$DIR/../frontend/public/proofs-epoch-$EPOCH.json"
+
+echo "▶ 2. Fund epoch $EPOCH with 100 USDC + Merkle root (30-day window)"
 FUND_OUT=$(stellar contract invoke --id "$YIELD" --source tanur-admin --network "$NET" \
-  -- fund_epoch --funder "$ADMIN" --epoch "$EPOCH" --amount 1000000000 --window_secs 2592000 2>&1)
+  -- fund_epoch --funder "$ADMIN" --epoch "$EPOCH" --amount 1000000000 \
+  --merkle_root "$ROOT_HEX" --window_secs 2592000 2>&1)
 FUND_TX=$(echo "$FUND_OUT" | last_hash)
 echo "   fund tx: $FUND_TX"
 
-echo "▶ 3. KYC investor claims their pro-rata USDC"
+echo "▶ 3. KYC investor claims their exact USDC via Merkle proof"
 CLAIM_OUT=$(stellar contract invoke --id "$YIELD" --source tanur-kyc --network "$NET" \
-  -- claim --holder "$KYC" --epoch "$EPOCH" 2>&1)
+  -- claim --holder "$KYC" --epoch "$EPOCH" --amount "$KYC_AMT" --proof "$KYC_PROOF" 2>&1)
 CLAIM_TX=$(echo "$CLAIM_OUT" | last_hash)
 CLAIM_RET=$(echo "$CLAIM_OUT" | grep -oE '"[0-9]+"' | tail -1)
 echo "   claim tx: $CLAIM_TX  (USDC paid, raw: $CLAIM_RET)"
