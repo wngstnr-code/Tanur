@@ -9,12 +9,15 @@ node_modules
 out
 *.tsbuildinfo
 .state-cache.json
+.vercel
 
 # Python
 __pycache__
 *.pyc
 .venv
 venv
+.pytest_cache
+*.egg-info
 
 # Secrets & local env
 .env
@@ -24,5 +27,13 @@ deploy/.keys
 deploy/*.secret
 .stellar
 
-# OS
+# Build artifacts / scratch (downloaded CI WASM, etc.)
+ci-wasm/
+*.wasm
+
+# Editor / OS
 .DS_Store
+.vscode/
+.idea/
+*.swp
+*.log
