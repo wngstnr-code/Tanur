@@ -7,10 +7,11 @@ verified epoch on-chain to the TanurVault contract on Stellar Testnet — where
 recording the epoch atomically mints TANUR (Tanur-Concept §6.2).
 
 Data feeds (3-feed integrity — the core lesson of the project):
-  - LME Nickel        — global exchange reference (FRED PNICKUSDM, USD/ton, live)
-  - HPM (HMA) ESDM    — Indonesia's official mineral reference price (representative,
-                        derived from the LME reference × Ni-content factor)
-  - Antam (ANTM)      — audited quarterly production tonnage (representative in MVP)
+  - LME Nickel        — latest global metal reference (FRED PNICKUSDM, USD/ton, live)
+  - HMA (ESDM)        — official reference basis = prior-month FRED observation (live;
+                        ESDM's HMA is set from the prior period's average)
+  - Antam (ANTM)      — Ni-content from the company's published 2026 guidance
+                        (26,000 TNi/yr; audited IDX filings = path to a fully live feed)
 
 AI's role (§6.4): the oracle is a data pipeline; Gemini is the *anomaly gate* that
 can veto bad data before it ever touches the chain. AI guards trust — it is not the
@@ -32,7 +33,7 @@ import aiohttp
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-from nickel_price import fetch_nickel_price, FEED_LABEL
+from nickel_price import fetch_nickel_series, FEED_LABEL
 from stellar_writer import StellarWriter
 
 load_dotenv()
@@ -64,8 +65,10 @@ MIN_PLAUSIBLE_PRICE_CENTS = 500_000    # $5,000/ton
 MAX_PLAUSIBLE_PRICE_CENTS = 4_000_000  # $40,000/ton
 MAX_PLAUSIBLE_TONNES = 50_000          # per-epoch Ni-content sanity ceiling
 
-# HPM is derived from the LME reference × Ni-content correction (Kepmen 144.K/2026).
-HPM_NI_FACTOR = 0.98  # ~official reference sits just under the LME global print
+# Antam (ANTM) monthly Ni-content, from the company's published 2026 guidance:
+# 26,000 TNi/yr ferronickel ÷ 12 ≈ 2,167 TNi/month (IDX disclosure; the audited
+# quarterly filings are the path to a fully live feed — no production API exists).
+ANTAM_MONTHLY_TNI = 2_167
 
 
 # ─── DATA STRUCTURES ───
@@ -91,50 +94,45 @@ class SourceReading:
 
 # ─── DATA FEEDS ───
 
-async def fetch_lme_nickel(
-    session: aiohttp.ClientSession, real_price_cents: Optional[int]
-) -> SourceReading:
-    """LME Nickel — global exchange reference (live via FRED PNICKUSDM)."""
-    log.info("[LME] Global nickel reference (live feed)...")
+def fetch_lme_nickel(lme_cents: Optional[int]) -> SourceReading:
+    """LME Nickel — latest global metal reference (live via FRED PNICKUSDM)."""
+    log.info("[LME] Latest global nickel reference (live feed)...")
     return SourceReading(
         source="LME",
-        tonnes_ni=None,                              # price-only source
-        price_cents=real_price_cents or 1_600_000,   # live feed, fallback $16,000/ton
+        tonnes_ni=None,                       # price-only source
+        price_cents=lme_cents or 1_600_000,   # live; fallback $16,000/ton
         confidence=95,
     )
 
 
-async def fetch_hpm_esdm(
-    session: aiohttp.ClientSession, real_price_cents: Optional[int]
-) -> SourceReading:
-    """HPM/HMA ESDM — Indonesia's official mineral reference price.
+def fetch_hma_esdm(hma_cents: Optional[int]) -> SourceReading:
+    """HMA/ESDM — Indonesia's official mineral reference basis (live).
 
-    Published ~2×/month on minerba.esdm.go.id + APNI under Kepmen 144.K/2026.
-    Representative in MVP: derived from the live LME reference × Ni-content factor.
+    ESDM's Harga Mineral Acuan (basis of the official HPM under Kepmen 144.K/2026)
+    is set from the prior period's average, so we use the previous month's live
+    FRED observation — a faithful, live proxy, not a hand-picked factor.
     """
-    log.info("[HPM] ESDM official reference (Kepmen 144.K/2026)...")
-    base = real_price_cents or 1_600_000
+    log.info("[HMA] ESDM reference — prior-month live basis (Kepmen 144.K/2026)...")
     return SourceReading(
-        source="HPM-ESDM",
+        source="HMA-ESDM",
         tonnes_ni=None,
-        price_cents=int(base * HPM_NI_FACTOR),
+        price_cents=hma_cents or 1_600_000,   # live prior-month observation
         confidence=90,
     )
 
 
-async def fetch_antam_production(
-    session: aiohttp.ClientSession, real_price_cents: Optional[int]
-) -> SourceReading:
-    """Antam (ANTM) — audited quarterly nickel production from IDX filings.
+def fetch_antam_production(lme_cents: Optional[int]) -> SourceReading:
+    """Antam (ANTM) — Ni-content from the company's published 2026 guidance.
 
-    Representative tonnage in MVP (clear path to the live audited feed). Price
-    anchored to the live LME reference for cross-validation.
+    No live production API exists; the audited quarterly IDX filings are the path
+    to a fully live feed. Uses the real disclosed figure, not an invented number.
+    Price anchored to the live LME reference for cross-validation.
     """
-    log.info("[ANTAM] Audited quarterly production (IDX filing)...")
+    log.info(f"[ANTAM] Ni-content from 2026 guidance ({ANTAM_MONTHLY_TNI:,} TNi/mo)...")
     return SourceReading(
         source="ANTM",
-        tonnes_ni=5_000,                             # representative monthly Ni-content output
-        price_cents=real_price_cents or 1_600_000,
+        tonnes_ni=ANTAM_MONTHLY_TNI,
+        price_cents=lme_cents or 1_600_000,
         confidence=85,
     )
 
@@ -205,8 +203,9 @@ CROSS-VALIDATED RESULT:
 CONTEXT:
   - Normal LME nickel price (2025-2026): $14,000-$22,000/ton
   - Indonesia dominates ~50% of global nickel supply
-  - HPM (ESDM official reference) normally sits within a few % of the LME print
-  - Representative monthly Ni-content output for a single operation: 3,000-8,000 t
+  - HMA (ESDM reference basis) is the prior-month average, so a few % below the
+    latest LME print is normal, not suspicious
+  - Antam ferronickel Ni-content is ~2,000-2,200 TNi/month (2026 guidance: 26,000 TNi/yr)
   - A sudden 2x+ price jump with no corroborating source is a red flag
 
 ANALYZE:
@@ -275,19 +274,24 @@ async def run_oracle_cycle() -> Optional[str]:
     log.info(f"=== Tanur Oracle — epoch {epoch} ({epoch_label}) ===")
 
     async with aiohttp.ClientSession() as session:
-        feed = await fetch_nickel_price(session)
-        real_price_cents = feed[0] if feed else None
-        if feed:
-            log.info(f"[FEED] Live nickel price ${real_price_cents/100:,.2f}/ton "
-                     f"({FEED_LABEL}, obs {feed[1]})")
+        series = await fetch_nickel_series(session, last=3)
+        if series and len(series) >= 2:
+            lme_cents = series[-1][1]            # latest observation = LME reference
+            hma_cents = series[-2][1]            # prior month = ESDM HMA basis (live)
+            log.info(f"[FEED] LME ${lme_cents/100:,.2f}/ton (obs {series[-1][0]}) · "
+                     f"HMA ${hma_cents/100:,.2f}/ton (obs {series[-2][0]}) — {FEED_LABEL}")
+        elif series:
+            lme_cents = hma_cents = series[-1][1]
+            log.info(f"[FEED] Live nickel ${lme_cents/100:,.2f}/ton (obs {series[-1][0]})")
         else:
+            lme_cents = hma_cents = None
             log.warning("[FEED] Live feed unavailable — using representative figures")
 
-        readings = list(await asyncio.gather(
-            fetch_lme_nickel(session, real_price_cents),
-            fetch_hpm_esdm(session, real_price_cents),
-            fetch_antam_production(session, real_price_cents),
-        ))
+        readings = [
+            fetch_lme_nickel(lme_cents),
+            fetch_hma_esdm(hma_cents),
+            fetch_antam_production(lme_cents),
+        ]
 
         if DEMO_ANOMALY:
             # Spike ALL feeds together so cross-validation (divergence) still passes —
@@ -325,7 +329,7 @@ async def run_oracle_cycle() -> Optional[str]:
             log.error("[ORACLE] Below threshold after AI gate — REJECTED (not posted)")
             return None
 
-        hpm = next(r.price_cents for r in readings if r.source == "HPM-ESDM")
+        hpm = next(r.price_cents for r in readings if r.source == "HMA-ESDM")
         data = NickelEpochData(
             epoch=epoch,
             epoch_label=epoch_label,

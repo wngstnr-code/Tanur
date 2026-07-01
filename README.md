@@ -51,9 +51,9 @@ record + atomic mint → fund USDC → KYC-gated claim. Verified transactions:
 
 | Step | Tx |
 |---|---|
-| 1. `record_epoch` (+ mint TANUR) | [`d782b72a…`](https://stellar.expert/explorer/testnet/tx/d782b72aa9e929b074b86785a21e7c29a63579614c5d3ded82a9fa3c7e036522) |
-| 2. `fund_epoch` (100 USDC) | [`de14f90c…`](https://stellar.expert/explorer/testnet/tx/de14f90c0ade1ceaed33d26db4ab1d9edecf29b0864e35767a3d81e9640f5be8) |
-| 3. `claim` (60 USDC, Merkle proof, KYC-gated) | [`c56180c3…`](https://stellar.expert/explorer/testnet/tx/c56180c3deeb62389a32526d97ab6b2335fc0bc2aec7845eec2052ee7c344067) |
+| 1. `record_epoch` (+ mint TANUR) | [`387ce473…`](https://stellar.expert/explorer/testnet/tx/387ce473c4deadf4021c4895ecc5184893199885991305fdb0c1e3607328c07b) |
+| 2. `fund_epoch` (100 USDC) | [`0ff5a413…`](https://stellar.expert/explorer/testnet/tx/0ff5a4138b6bbdd41c126a43b4c9f971cdf92fd789199afe85119ec46d7c058b) |
+| 3. `claim` (60 USDC, Merkle proof, KYC-gated) | [`1a63254e…`](https://stellar.expert/explorer/testnet/tx/1a63254eb07561e9f4325a1328aa757784e645ece5217589cfc8f93654a8aace) |
 
 ## Run it
 
@@ -107,10 +107,14 @@ rejection, double-claim, KYC gating, pause, sweep) is green.
 
 ## Data provenance (honest)
 
-- **Live:** nickel price (FRED PNICKUSDM / IMF), USD→IDR (public FX API, display-only).
-- **Representative in MVP:** HPM (ESDM official reference) and Antam audited production —
-  clear path to the live feeds. Record + mint are atomic inside the Vault, so the minted
-  amount is cryptographically tied to the verified epoch — the operator cannot insert a
-  different number.
+- **Live:** LME nickel = latest FRED PNICKUSDM observation; HMA (ESDM reference basis)
+  = the prior-month FRED observation (ESDM's HMA is the prior-period average — a faithful
+  live proxy); USD→IDR via public FX API (display-only). Cross-validation is a genuine
+  month-over-month check.
+- **Real figure, not live-fetched:** Antam Ni-content uses the company's published 2026
+  guidance (26,000 TNi/yr ferronickel). There is no production API; the audited quarterly
+  IDX filings are the path to a fully live feed.
+- Record + mint are atomic inside the Vault, so the minted amount is cryptographically
+  tied to the verified epoch — the operator cannot insert a different number.
 
 *Tanur — APAC Stellar Hackathon 2026 · RWA · DeFi · Agentic AI · Indonesian Nickel*
