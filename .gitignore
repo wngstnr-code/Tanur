@@ -39,3 +39,7 @@ ci-wasm/
 .idea/
 *.swp
 *.log
+
+# Internal design doc + Claude workspace (kept local, not published)
+Tanur-Concept.md
+.claude/

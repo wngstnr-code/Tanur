@@ -5,9 +5,43 @@
 > anchored on official data feeds (LME + HPM/ESDM + Antam), with an AI oracle that
 > rejects bad data before it hits the chain.
 
-Built for the **APAC Stellar Hackathon 2026**. Primary track: *Local Finance &
-Real-World Access*. Secondary: *DeFi & Composability*. See [`Tanur-Concept.md`](./Tanur-Concept.md)
-for the full design.
+**[▶ Live demo](https://tanur-one.vercel.app)** <!-- TODO: swap to custom domain before submit -->
+ · **[🎬 Demo video — coming soon](#)** <!-- TODO: add YouTube/Loom link before 15 Jul -->
+ · **[🔎 Contracts on StellarExpert](https://stellar.expert/explorer/testnet/contract/CAAQKZFA6SLEGO6NIEFTATWSCS4VP464NA4BJJZFX53LQVUKDANMG2L7)**
+ · **Network:** Stellar Testnet
+
+Built for the **APAC Stellar Hackathon 2026**.
+**Track:** *Local Finance & Real-World Access*.
+
+---
+
+## The problem
+
+Indonesia is the **world's #1 nickel producer (~50% of global supply)** — the most
+critical input for EV batteries and the energy transition. Yet that revenue is entirely
+off-chain and closed off to both global and local retail investors:
+
+- **No fractional access.** You can't buy a $100 stake in a nickel operation's revenue.
+- **Locked out of a national asset.** Indonesians can't hold a direct, liquid claim on their own country's flagship commodity.
+- **The RWA trust gap.** Tokenized RWAs usually mean *"trust the operator"* — production numbers, yield math, and compliance all sit in a black box.
+
+## The solution
+
+**Tanur** tokenizes Indonesian **nickel production revenue** as the `TANUR` asset on
+Stellar. Each token is a fractional, yield-bearing claim on real nickel output — not a
+synthetic, not a price tracker. Yield is paid in **USDC**, the token is **liquid on the
+SDEX**, and every operator action is **verifiable on-chain**.
+
+The differentiator is **clean, official data**: prices from an exchange feed + the
+**government reference price**, production from **audited exchange-listed filings**
+(LME nickel + HPM/ESDM reference + Antam quarterly reports). What is usually the weakest
+point of an RWA is, for nickel, the moat.
+
+## Why it fits *Local Finance & Real-World Access*
+
+- **Real-world asset → on-chain rail.** A verified real economic activity (Indonesian nickel production) is connected to blockchain infrastructure, with the mint cryptographically tied to the verified epoch.
+- **Local financial access.** Retail investors — Indonesian and global — can hold a fractional, liquid claim on a national commodity that was previously inaccessible.
+- **Emerging-market-native settlement.** Buys, yield, and claims settle in **USDC on Stellar** — low fees and fast finality, exactly the profile local finance needs.
 
 ## Architecture
 
@@ -20,7 +54,17 @@ Two Soroban contracts + a native Stellar asset (TANUR) exposed via its SAC:
 | **TANUR** (Stellar Asset + SAC) | Native asset, tradeable on SDEX. KYC = `AUTH_REQUIRED` trustline authorized by the issuer. |
 | **Oracle Agent** (Python) | LME + HPM(ESDM) + Antam → cross-validate → **deterministic plausibility gate** → **Gemini reasoning gate** → post on-chain via stellar-sdk. The trust guarantee is deterministic; the LLM adds reasoning on top, it is never the sole gate. |
 | **Market Analyst** (Python, stretch) | Closed loop: read chain → Gemini → tune GORR on-chain within ±100 bps / [1%,10%] safety rails. |
-| **Frontend** (Next.js) | Connect Freighter (Stellar Wallets Kit) → buy TANUR (USDC via SDEX) → position in USD + Rupiah (`open.er-api.com`) → claim USDC. |
+| **Frontend** (Next.js) | Connect Freighter (Stellar Wallets Kit) → **Verify KYC** (issuer authorizes the `AUTH_REQUIRED` trustline) → buy TANUR (USDC via SDEX) → position in USD + Rupiah (`open.er-api.com`) → claim USDC. |
+
+## Investor flow (frontend)
+
+The app walks an investor through the full permissioned-RWA journey:
+
+1. **Connect** — Freighter via Stellar Wallets Kit (`/app`).
+2. **Verify KYC** (`/app/tools/kyc`) — a form with the connected wallet auto-filled and locked; it's sent straight to the issuer (via FormSubmit.co, no backend). The account enters a **pending** state that **auto-updates to Verified** the moment the issuer authorizes the trustline on-chain. → `frontend/src/components/app/KycView.tsx`
+3. **Buy TANUR** — spend USDC through the SDEX (path payment), gated on an authorized trustline. → `ExploreView.tsx`
+4. **Portfolio** (`/app/portfolio`) — holdings and value in USD + Rupiah.
+5. **Claim USDC yield** (`/app/tools/claim`) — Merkle-proof, KYC-gated claim. → `ClaimView.tsx`
 
 ## Deployed on Stellar Testnet
 
@@ -56,6 +100,8 @@ record + atomic mint → fund USDC → KYC-gated claim. Verified transactions:
 | 3. `claim` (60 USDC, Merkle proof, KYC-gated) | [`1a63254e…`](https://stellar.expert/explorer/testnet/tx/1a63254eb07561e9f4325a1328aa757784e645ece5217589cfc8f93654a8aace) |
 
 ## Run it
+
+Live app (interim): **https://tanur-one.vercel.app** · or run locally below.
 
 **Contracts** (Rust + Stellar CLI):
 ```bash
@@ -116,5 +162,7 @@ rejection, double-claim, KYC gating, pause, sweep) is green.
   IDX filings are the path to a fully live feed.
 - Record + mint are atomic inside the Vault, so the minted amount is cryptographically
   tied to the verified epoch — the operator cannot insert a different number.
+
+---
 
 *Tanur — APAC Stellar Hackathon 2026 · RWA · DeFi · Agentic AI · Indonesian Nickel*
