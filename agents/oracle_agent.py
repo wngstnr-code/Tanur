@@ -206,24 +206,29 @@ CONTEXT:
   - HMA (ESDM reference basis) is the prior-month average, so a few % below the
     latest LME print is normal, not suspicious
   - Antam ferronickel Ni-content is ~2,000-2,200 TNi/month (2026 guidance: 26,000 TNi/yr)
-  - A sudden 2x+ price jump with no corroborating source is a red flag
+  - IMPORTANT: all price feeds share upstream reference data, so a compromised or
+    manipulated pipeline produces a spike that is INTERNALLY CONSISTENT across
+    every source. Cross-source agreement is therefore necessary but NOT sufficient.
+  - A consensus price materially outside the normal band ($14,000-$22,000/ton) is a
+    red flag and must be REJECTED even when all sources agree — absent a known,
+    verifiable market event of that magnitude, agreement means correlated feeds,
+    not truth.
 
 ANALYZE:
-1. Is the price within the normal band and consistent across LME vs HPM?
+1. Is the consensus price inside the normal band? If it is far outside, REJECT
+   regardless of cross-source consistency (see IMPORTANT above).
 2. Is the production figure plausible?
-3. Any suspicious spike or divergence?
+3. Any suspicious spike, jump vs the prior-month HMA basis, or divergence?
 4. Overall: trustworthy for on-chain recording?
 
-Respond in EXACTLY this JSON:
+Respond in EXACTLY this JSON shape:
 {{
-  "trustworthy": true,
-  "score_adjustment": 0,
-  "anomalies": [],
-  "analysis": "2-3 sentence summary",
-  "recommendation": "APPROVE"
-}}
-
-score_adjustment: integer -30..+10 (negative if issues). recommendation: "APPROVE" or "REJECT"."""
+  "trustworthy": <true|false>,
+  "score_adjustment": <integer -30..+10, negative if issues>,
+  "anomalies": [<short strings, empty if none>],
+  "analysis": "<2-3 sentence summary>",
+  "recommendation": "<APPROVE|REJECT>"
+}}"""
 
     try:
         model = genai.GenerativeModel(GEMINI_MODEL)
@@ -296,12 +301,19 @@ async def run_oracle_cycle() -> Optional[str]:
         if DEMO_ANOMALY:
             # Spike ALL feeds together so cross-validation (divergence) still passes —
             # the reading is internally consistent but absurdly high in absolute terms.
-            # This is the case only the Gemini reasoning gate can catch (§6.4).
-            log.warning("[DEMO] Injecting an internally-consistent 2.5x price spike "
-                        "across all feeds — only the Gemini gate should veto it")
+            # The factor is derived from the live price so the spiked value always
+            # lands INSIDE the deterministic plausibility band (at 95% of the cap):
+            # if it landed outside, the hard gate would reject it first and the
+            # Gemini veto — the case only reasoning can catch (§6.4) — never runs.
+            max_reading = max(r.price_cents for r in readings if r.price_cents)
+            cap_factor = MAX_PLAUSIBLE_PRICE_CENTS * 0.95 / max_reading
+            factor = min(2.5, cap_factor)
+            log.warning(f"[DEMO] Injecting an internally-consistent {factor:.2f}x price "
+                        "spike across all feeds (inside the deterministic band) — "
+                        "only the Gemini gate should veto it")
             for r in readings:
                 if r.price_cents is not None:
-                    r.price_cents = int(r.price_cents * 2.5)
+                    r.price_cents = int(r.price_cents * factor)
 
         tonnes_ni, price_cents, score, sources = compute_validation_score(readings)
         if score < MIN_VALIDATION_SCORE:
