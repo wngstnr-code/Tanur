@@ -56,18 +56,15 @@ export default function RwaSection() {
                     'KYC-native — AUTH_REQUIRED trustline',
                     'Upgradeable + source-verified',
                   ].map((f) => (
-                    <li key={f} className="flex items-start gap-3">
-                      <span className="mt-px grid h-4 w-4 flex-none place-items-center rounded-full bg-brand-tint text-[10px] font-bold text-brand">
-                        ✓
-                      </span>
+                    <li key={f} className="flex items-start gap-2.5">
+                      <span className="mt-px flex-none text-[13px] font-bold text-brand">✓</span>
                       <span className="text-[13px] leading-snug text-ink/80">{f}</span>
                     </li>
                   ))}
                 </ul>
 
                 <div className="mt-auto pt-8">
-                  <div className="flex items-center gap-2 font-mono text-[11px] text-faint">
-                    <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+                  <div className="font-mono text-[11px] text-faint">
                     Live on Stellar Testnet
                   </div>
                   <div className="mt-4">
