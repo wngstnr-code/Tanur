@@ -34,7 +34,6 @@ const WINDOW: u64 = 1_000;
 struct Harness {
     env: Env,
     yield_c: TanurYieldClient<'static>,
-    vault: MockVaultClient<'static>,
     usdc: token::Client<'static>,
     admin: Address,
     funder: Address,
@@ -85,7 +84,6 @@ fn setup() -> Harness {
 
     Harness {
         yield_c: TanurYieldClient::new(&env, &yield_id),
-        vault,
         usdc: token::Client::new(&env, &usdc_sac.address()),
         admin,
         funder,
