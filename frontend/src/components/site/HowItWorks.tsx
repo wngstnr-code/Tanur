@@ -75,7 +75,7 @@ export default function HowItWorks() {
                 {!isActive && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src="/tanur-icon-white.svg"
+                    src="/tanur_white.svg"
                     alt=""
                     aria-hidden
                     className="pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 opacity-[0.06]"

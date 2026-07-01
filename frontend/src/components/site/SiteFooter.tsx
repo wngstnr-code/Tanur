@@ -15,7 +15,7 @@ export default function SiteFooter() {
           <div>
             <div className="flex items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/tanur-icon-black.svg" alt="" className="h-7 w-7" />
+              <img src="/tanur_dark.svg" alt="" className="h-7 w-7" />
               <span className="font-display text-base text-ink">
                 <span className="font-semibold">Tanur</span>
               </span>

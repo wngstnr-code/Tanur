@@ -37,7 +37,7 @@ export default function RwaSection() {
                 <div className="absolute inset-0 opacity-30 [background:radial-gradient(120%_80%_at_30%_0%,#fff_0%,transparent_55%)]" />
                 <div className="absolute left-6 top-6 grid h-12 w-12 place-items-center rounded-xl border border-white/60 bg-white/85 shadow-card backdrop-blur">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/tanur-icon-black.svg" alt="" className="h-7 w-7" />
+                  <img src="/tanur_dark.svg" alt="" className="h-7 w-7" />
                 </div>
               </div>
 
