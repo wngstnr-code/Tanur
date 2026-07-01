@@ -30,38 +30,45 @@ export default function RwaSection() {
       <Reveal>
         <div className="rounded-3xl border border-line bg-bg-2/60 p-3 sm:p-4">
           <div className="grid gap-3 lg:grid-cols-3">
-            {/* product card (tall, left) */}
+            {/* product card (tall, left) — clean, no image */}
             <div className="relative flex flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-card lg:row-span-2">
-              {/* smelter-heat gradient header */}
-              <div className="relative h-60 bg-gradient-to-br from-ink via-brand to-orange">
-                <div className="absolute inset-0 opacity-30 [background:radial-gradient(120%_80%_at_30%_0%,#fff_0%,transparent_55%)]" />
-                <div className="absolute left-6 top-6 grid h-12 w-12 place-items-center rounded-xl border border-white/60 bg-white/85 shadow-card backdrop-blur">
+              {/* thin smelter-heat rule (signature, not an image) */}
+              <div className="h-1 w-full bg-gradient-to-r from-brand via-brand-bright to-orange" />
+
+              <div className="flex flex-1 flex-col p-7">
+                {/* icon */}
+                <div className="grid h-12 w-12 place-items-center rounded-xl border border-line bg-bg-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/tanur_dark.svg" alt="" className="h-7 w-7" />
                 </div>
-              </div>
 
-              <div className="relative -mt-6 flex flex-1 flex-col px-7 pb-7">
-              <h3 className="font-display text-2xl tracking-tightish text-ink">
-                <span className="font-semibold">Tanur</span>
-                <span className="font-semibold"> Protocol</span>
-              </h3>
-              <p className="mt-3 text-[14px] leading-relaxed text-muted">
-                Tokenized nickel revenue on Stellar — verified by an AI oracle,
-                minted as TANUR, and claimable as USDC yield.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {['Stellar Asset', 'KYC-gated', 'USDC yield'].map((b) => (
-                  <span key={b} className="rounded-full bg-bg-2 px-2.5 py-1 text-[11px] text-muted">
-                    {b}
-                  </span>
-                ))}
-              </div>
-              <div className="mt-auto pt-7">
-                <Button href="/app" variant="primary" size="md">
-                  Launch App →
-                </Button>
-              </div>
+                <h3 className="mt-6 font-display text-2xl tracking-tightish text-ink">
+                  <span className="font-semibold">Tanur</span>
+                  <span className="font-semibold"> Protocol</span>
+                </h3>
+                <p className="mt-3 text-[14px] leading-relaxed text-muted">
+                  Tokenized nickel revenue on Stellar — verified by an AI oracle,
+                  minted as TANUR, and claimable as USDC yield.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {['Stellar Asset', 'KYC-gated', 'USDC yield'].map((b) => (
+                    <span key={b} className="rounded-full bg-bg-2 px-2.5 py-1 text-[11px] text-muted">
+                      {b}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="mt-auto pt-8">
+                  <div className="flex items-center gap-2 border-t border-line pt-5 font-mono text-[11px] text-faint">
+                    <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+                    Live on Stellar Testnet
+                  </div>
+                  <div className="mt-5">
+                    <Button href="/app" variant="primary" size="md">
+                      Launch App →
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
 
