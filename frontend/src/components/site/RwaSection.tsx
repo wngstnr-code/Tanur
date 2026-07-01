@@ -32,9 +32,6 @@ export default function RwaSection() {
           <div className="grid gap-3 lg:grid-cols-3">
             {/* product card (tall, left) — clean, no image */}
             <div className="relative flex flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-card lg:row-span-2">
-              {/* thin smelter-heat rule (signature, not an image) */}
-              <div className="h-1 w-full bg-gradient-to-r from-brand via-brand-bright to-orange" />
-
               <div className="flex flex-1 flex-col p-7">
                 {/* icon */}
                 <div className="grid h-12 w-12 place-items-center rounded-xl border border-line bg-bg-2">
@@ -47,23 +44,33 @@ export default function RwaSection() {
                   <span className="font-semibold"> Protocol</span>
                 </h3>
                 <p className="mt-3 text-[14px] leading-relaxed text-muted">
-                  Tokenized nickel revenue on Stellar — verified by an AI oracle,
-                  minted as TANUR, and claimable as USDC yield.
+                  Tokenized nickel revenue on Stellar — real ore, on-chain, settled
+                  in USDC.
                 </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {['Stellar Asset', 'KYC-gated', 'USDC yield'].map((b) => (
-                    <span key={b} className="rounded-full bg-bg-2 px-2.5 py-1 text-[11px] text-muted">
-                      {b}
-                    </span>
+
+                {/* core features */}
+                <ul className="mt-6 space-y-3.5 border-t border-line pt-6">
+                  {[
+                    'Real ore → TANUR, minted atomically',
+                    'USDC yield, claimed by Merkle proof',
+                    'KYC-native — AUTH_REQUIRED trustline',
+                    'Upgradeable + source-verified',
+                  ].map((f) => (
+                    <li key={f} className="flex items-start gap-3">
+                      <span className="mt-px grid h-4 w-4 flex-none place-items-center rounded-full bg-brand-tint text-[10px] font-bold text-brand">
+                        ✓
+                      </span>
+                      <span className="text-[13px] leading-snug text-ink/80">{f}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
 
                 <div className="mt-auto pt-8">
-                  <div className="flex items-center gap-2 border-t border-line pt-5 font-mono text-[11px] text-faint">
+                  <div className="flex items-center gap-2 font-mono text-[11px] text-faint">
                     <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                     Live on Stellar Testnet
                   </div>
-                  <div className="mt-5">
+                  <div className="mt-4">
                     <Button href="/app" variant="primary" size="md">
                       Launch App →
                     </Button>
