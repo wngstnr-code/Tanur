@@ -16,7 +16,7 @@ Two Soroban contracts + a native Stellar asset (TANUR) exposed via its SAC:
 | Component | Role |
 |---|---|
 | **TanurVault** (Soroban) | `record_epoch` (oracle-gated) + rolling oracle reputation + **atomic mint** of TANUR via the SAC from the state it just recorded. Native KYC mirror for cross-contract gating. |
-| **TanurYield** (Soroban) | Holds per-epoch USDC; pro-rata `claim` **KYC-gated** via a cross-contract read to the Vault; fund window + sweep. |
+| **TanurYield** (Soroban) | Holds per-epoch USDC; **Merkle-proof `claim`**, **KYC-gated** via a cross-contract read to the Vault; funds only Vault-recorded epochs; window + sweep. |
 | **TANUR** (Stellar Asset + SAC) | Native asset, tradeable on SDEX. KYC = `AUTH_REQUIRED` trustline authorized by the issuer. |
 | **Oracle Agent** (Python) | LME + HPM(ESDM) + Antam → cross-validate → **Gemini anomaly gate** → post on-chain via stellar-sdk. |
 | **Market Analyst** (Python, stretch) | Closed loop: read chain → Gemini → tune GORR on-chain within ±100 bps / [1%,10%] safety rails. |
@@ -29,9 +29,9 @@ Addresses live in [`deploy/addresses.json`](./deploy/addresses.json). Explorer:
 
 | | Contract / Asset |
 |---|---|
-| TanurVault | `CAQIOGWVGICYOXQW6H2XFYN4MLDAFURDGLUTBGF4FL55Z7YKJNZMYPHP` |
-| TanurYield | `CDIF5HDGQAK7O7W776KFB23UCK5QXP2JRNTIFMAXIAOBBILFQJB4RO55` |
-| TANUR (SAC) | `CBI2W5EMERZUVXNIUCMRIMXARDLXZZM6RAHCQDD6OTYBTU7RHL4ET4F3` |
+| TanurVault | `CAAQKZFA6SLEGO6NIEFTATWSCS4VP464NA4BJJZFX53LQVUKDANMG2L7` |
+| TanurYield | `CCDEL4BVX552UN6C2PO4ZRR54VYJFGARO5ZM7EW6CVA537JR5FVOOHYX` |
+| TANUR (SAC) | `CCKIUVK3NDBEIMGYR7HMHQCDIN3ZQ63ALWYDHWNWXVPHXJWVTWUDEEB3` |
 | USDC (Circle testnet) | `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5` |
 
 **Upgradeable + verified.** Both contracts expose `upgrade(new_wasm_hash)` (SEP-49,
@@ -42,8 +42,8 @@ attestation, so StellarExpert links each contract to this source commit:
 
 | Contract | On-chain WASM hash (= attested CI build) |
 |---|---|
-| TanurVault | `556e9a815c5ee9e2abb40637a95df28823e6e6648e1444af3c170edfd1060e95` |
-| TanurYield | `91712045ff2e3b2c31fc891945ae144e8750ad55672978bb7586aef545219a27` |
+| TanurVault | `086a1d878ec9d83792c77ec5a97705124f242456cfe12a15e93d0d16370afebd` |
+| TanurYield | `54ed504df6647b793e91a5357ce450367b1b3cbf83d47571971170b931ae29a8` |
 
 ## The full economic loop, executed on-chain
 
@@ -51,9 +51,9 @@ record + atomic mint → fund USDC → KYC-gated claim. Verified transactions:
 
 | Step | Tx |
 |---|---|
-| 1. `record_epoch` (+ mint TANUR) | [`76fac31e…`](https://stellar.expert/explorer/testnet/tx/76fac31e5b83312926fc1e1ed8150e90e789525e4bae79febc3481aedf11da02) |
-| 2. `fund_epoch` (100 USDC) | [`38bb4aa3…`](https://stellar.expert/explorer/testnet/tx/38bb4aa3c97b8c46f37a69eceaf8989816e346d6feee315a51a31f2dc9c054b4) |
-| 3. `claim` (60 USDC, pro-rata, KYC-gated) | [`c22b7b5a…`](https://stellar.expert/explorer/testnet/tx/c22b7b5a71b7f34844ab1f57c9cd31a09b0f4ca45951ea98f88b57b2ab2cd409) |
+| 1. `record_epoch` (+ mint TANUR) | [`24d588ea…`](https://stellar.expert/explorer/testnet/tx/24d588ea6b7a44aa6cf95e56d93c050c75834df971678b3fa2c5c1ea0e62095e) |
+| 2. `fund_epoch` (100 USDC) | [`dc48b14c…`](https://stellar.expert/explorer/testnet/tx/dc48b14c4ac454ec58e2edf2ecff7e9d466bde7429ed7ad784959ecb016d6187) |
+| 3. `claim` (60 USDC, pro-rata, KYC-gated) | [`e49a65b5…`](https://stellar.expert/explorer/testnet/tx/e49a65b54c21cf2b92df21a3a6de7bd54bff9d9f7652eb6dc572068b969e3dc5) |
 
 ## Run it
 
@@ -89,17 +89,21 @@ require auth, init uses `__constructor` (no reinit), cross-contract addresses ar
 at deploy (no arbitrary calls), and record+mint are atomic.
 
 Hardening applied:
+- **Merkle claims** — entitlements are snapshotted off-chain and committed as a Merkle
+  root at fund time; `claim(holder, epoch, amount, proof)` verifies the proof on-chain.
+  The amount is fixed by the snapshot, so moving TANUR during the window cannot change
+  it — this closes the live-balance "shuffle" gaming a pro-rata-on-live-balance design
+  allows. Leaf = `sha256(XDR(Address) || XDR(i128))`; off-chain builder in `agents/merkle.py`.
+- **Fund guarded** — `fund_epoch` refuses epochs the Vault never recorded (`epoch_exists`).
 - **Per-epoch mint cap** (`MAX_TONNES_PER_EPOCH`) bounds blast radius if the oracle key leaks.
 - **Key rotation** — `set_oracle` / `set_admin` on the Vault, `set_admin` on Yield.
 - **Emergency pause** on Yield (`set_paused`) gating `fund_epoch` + `claim`.
 - **Instance TTL** extended on Yield hot paths so config can't be archived on idle.
-- **Checked arithmetic** on the claim pro-rata math.
+- **Checked arithmetic** throughout the claim math.
+- **Upgradeable (SEP-49)** + **verified reproducible builds** (see above).
 
-Known limitation (documented, not yet fixed): `claim` computes the share from the
-*live* TANUR balance against a *snapshot* supply, so an actor with multiple KYC
-accounts could shuffle tokens within a claim window to over-claim relative to other
-holders (the `remaining` cap still bounds total payout to the funded amount). The fix
-is a per-holder **balance snapshot / Merkle claims** — see roadmap (`Tanur-Concept.md` §13).
+The full contract test suite (19 unit tests, incl. Merkle proof verify, invalid-proof
+rejection, double-claim, KYC gating, pause, sweep) is green.
 
 ## Data provenance (honest)
 
