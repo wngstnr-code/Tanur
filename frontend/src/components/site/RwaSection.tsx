@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button';
 import { fmtAmount } from '@/lib/format';
 import { useChainState } from '@/lib/useChainState';
 import { useNickelHistory } from '@/lib/useNickelHistory';
-import { LineTrend } from '@/components/ui/LineTrend';
+import { AreaChart } from '@/components/ui/AreaChart';
 
 export default function RwaSection() {
   const s = useChainState();
@@ -101,7 +101,7 @@ export default function RwaSection() {
                 )}
               </div>
               <div className="mt-2 h-32">
-                <LineTrend id="rwa" data={hist?.series.map((p) => p.price)} />
+                <AreaChart id="rwa" points={hist?.series} />
               </div>
             </div>
 

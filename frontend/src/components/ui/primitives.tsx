@@ -55,9 +55,9 @@ export function Stat({
   sub,
   accent,
 }: {
-  label: string;
+  label: ReactNode;
   value: ReactNode;
-  sub?: string;
+  sub?: ReactNode;
   accent?: boolean;
 }) {
   return (

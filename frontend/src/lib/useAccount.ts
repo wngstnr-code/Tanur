@@ -23,7 +23,7 @@ export function useAccount() {
     setReady(true);
   }, []);
 
-  const connect = useCallback(async () => {
+  const openPicker = useCallback(async () => {
     const kit = getKit();
     await kit.openModal({
       onWalletSelected: async (option) => {
@@ -35,7 +35,16 @@ export function useAccount() {
     });
   }, []);
 
-  const disconnect = useCallback(() => {
+  const connect = openPicker;
+
+  // Fully disconnect: tear down the wallet-kit session (not just our local state)
+  // so the next connect starts fresh.
+  const disconnect = useCallback(async () => {
+    try {
+      await getKit().disconnect();
+    } catch {
+      /* ignore */
+    }
     setAddress(undefined);
     localStorage.removeItem(LS_KEY);
   }, []);
