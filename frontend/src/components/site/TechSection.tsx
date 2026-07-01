@@ -5,7 +5,7 @@ const agents = [
   {
     name: 'Oracle Agent',
     role: 'Verifies production',
-    body: 'Pulls the live FRED/IMF nickel price, cross-validates LME / HPM (ESDM) / Antam, and reasons with Gemini before any data reaches the chain.',
+    body: 'Pulls the live FRED/IMF nickel price, cross-validates LME / HMA (ESDM) / Antam, and reasons with Gemini before any data reaches the chain.',
   },
   {
     name: 'Gemini Gate',
@@ -41,14 +41,14 @@ export default function TechSection() {
         <Reveal>
           <div className="inline-flex items-center gap-2 text-[12px] font-medium uppercase tracking-[0.14em] text-brand-bright">
             <span className="h-px w-5 bg-brand-bright/50" />
-            Agentic AI
+            Data integrity
           </div>
           <h2 className="mt-4 max-w-2xl font-display text-4xl font-semibold tracking-tighter2 text-bg text-balance sm:text-5xl">
-            Yield that runs itself.
+            An oracle that rejects bad data.
           </h2>
           <p className="mt-5 max-w-xl font-serif text-lg leading-relaxed text-white/65 sm:text-xl">
-            Three autonomous agents perceive, reason, and act on-chain — the
-            self-driving DeFi the Stellar agent economy is built for.
+            The data is the moat. A deterministic gate plus AI reasoning cross-checks
+            LME, HMA, and Antam — and vetoes anomalies before they ever reach the chain.
           </p>
         </Reveal>
 

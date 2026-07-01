@@ -9,7 +9,7 @@ const steps = [
   {
     n: '01',
     title: 'Verify production',
-    body: 'An AI oracle cross-validates LME + HPM (ESDM) + Antam and the live FRED/IMF nickel price, then records a verified epoch with an on-chain reputation score.',
+    body: 'An AI oracle cross-validates LME + HMA (ESDM) + Antam and the live FRED/IMF nickel price, then records a verified epoch with an on-chain reputation score.',
     tag: 'TanurVault · record_epoch',
   },
   {

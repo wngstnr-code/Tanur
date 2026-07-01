@@ -33,7 +33,7 @@ export function LineTrend({
         {[20, 40, 60].map((y) => (
           <line key={y} x1="0" y1={y} x2={W} y2={y} stroke="#ECEAE6" strokeWidth="0.5" />
         ))}
-        <line x1="0" y1={H - 12} x2={W} y2={H - 12} stroke="#E7F2EC" strokeWidth="1.4" className="animate-pulse" />
+        <line x1="0" y1={H - 12} x2={W} y2={H - 12} stroke="#E6F0F5" strokeWidth="1.4" className="animate-pulse" />
       </svg>
     );
   }
@@ -54,8 +54,8 @@ export function LineTrend({
     <svg viewBox={`0 0 ${W} ${H}`} className={`h-full w-full ${className}`} preserveAspectRatio="none">
       <defs>
         <linearGradient id={`${id}-fill`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#1E7A4F" stopOpacity="0.14" />
-          <stop offset="100%" stopColor="#1E7A4F" stopOpacity="0" />
+          <stop offset="0%" stopColor="#2E6F8E" stopOpacity="0.14" />
+          <stop offset="100%" stopColor="#2E6F8E" stopOpacity="0" />
         </linearGradient>
       </defs>
 
@@ -68,7 +68,7 @@ export function LineTrend({
       <path
         d={line}
         fill="none"
-        stroke="#1E7A4F"
+        stroke="#2E6F8E"
         strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -76,8 +76,8 @@ export function LineTrend({
       />
 
       {/* latest value marker */}
-      <circle cx={last.x} cy={last.y} r="3.4" fill="#1E7A4F" opacity="0.16" />
-      <circle cx={last.x} cy={last.y} r="1.7" fill="#1E7A4F" vectorEffect="non-scaling-stroke" />
+      <circle cx={last.x} cy={last.y} r="3.4" fill="#2E6F8E" opacity="0.16" />
+      <circle cx={last.x} cy={last.y} r="1.7" fill="#2E6F8E" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }

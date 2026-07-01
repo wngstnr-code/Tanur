@@ -18,7 +18,7 @@ export const LOOP_STEPS: LoopStep[] = [
   {
     n: 1,
     title: 'Record + mint',
-    desc: 'AI oracle records a verified nickel epoch (LME+HPM+Antam); TanurVault mints TANUR atomically from it.',
+    desc: 'AI oracle records a verified nickel epoch (LME+HMA+Antam); TanurVault mints TANUR atomically from it.',
     method: 'record_epoch',
     tx: '387ce473c4deadf4021c4895ecc5184893199885991305fdb0c1e3607328c07b',
   },

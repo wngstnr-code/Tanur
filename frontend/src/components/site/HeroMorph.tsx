@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 
-const partners = ['Stellar', 'LME', 'HPM · ESDM', 'Antam', 'FRED · IMF', 'Gemini', 'Soroban'];
+const partners = ['Stellar', 'LME', 'HMA · ESDM', 'Antam', 'FRED · IMF', 'Gemini', 'Soroban'];
 
 // Desktop splits the title left↔right to flank the shrunken card. Tablet/mobile
 // don't have the horizontal room, so there both halves lift UP and stack as a
@@ -124,8 +124,8 @@ export default function HeroMorph() {
           style={{ opacity: subOpacity }}
           className="absolute bottom-[16vh] left-1/2 z-20 w-full max-w-lg -translate-x-1/2 px-6 text-center font-serif text-[15px] leading-relaxed text-ink/85 sm:bottom-[9vh] sm:max-w-xl sm:text-xl"
         >
-          Verified Indonesian nickel, tokenized as TANUR — yielding USDC,
-          on-chain, driven by autonomous AI agents.
+          Real ore, real revenue. Indonesian nickel tokenized as TANUR —
+          on-chain yield in USDC, anchored on official data feeds.
         </motion.p>
 
         {/* scroll hint + static partner row (before scroll) */}

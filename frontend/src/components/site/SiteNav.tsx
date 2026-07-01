@@ -6,7 +6,7 @@ import Link from 'next/link';
 const links = [
   { label: 'How it works', href: '#how' },
   { label: 'Real-world asset', href: '#rwa' },
-  { label: 'AI agents', href: '#agents' },
+  { label: 'Oracle', href: '#agents' },
   { label: 'On-chain', href: '#proof' },
 ];
 

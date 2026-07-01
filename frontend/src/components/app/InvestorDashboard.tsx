@@ -257,7 +257,7 @@ export default function InvestorDashboard() {
                 <div className="mt-5 grid gap-6 sm:grid-cols-4">
                   <Field label="Production" value={`${fmtAmount(state.latest_tonnes)} t Ni`} />
                   <Field label="LME price" value={fmtUsdFromCents(state.latest_lme_price_cents)} />
-                  <Field label="HPM (ESDM)" value={fmtUsdFromCents(state.latest_hpm_price_cents)} />
+                  <Field label="HMA (ESDM)" value={fmtUsdFromCents(state.latest_hpm_price_cents)} />
                   <Field label="GORR" value={bpsToPct(state.gorr_bps)} />
                 </div>
               </Card>
