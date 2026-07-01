@@ -21,12 +21,9 @@ const submitKey = (addr?: string) => `tanur:kyc-submitted:${addr ?? 'anon'}`;
 export default function KycView() {
   const { pos, address, reload } = useInvestor();
 
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [country, setCountry] = useState('');
-  const [accountType, setAccountType] = useState<'Individual' | 'Institution'>('Individual');
-  const [agree, setAgree] = useState(false);
   const [sent, setSent] = useState(false);
+  const [phase, setPhase] = useState<'idle' | 'sending' | 'error'>('idle');
+  const [error, setError] = useState('');
 
   // Restore the "already submitted" flag for the connected wallet.
   useEffect(() => {
@@ -34,25 +31,59 @@ export default function KycView() {
     setSent(localStorage.getItem(submitKey(address)) === '1');
   }, [address]);
 
-  const canSubmit = name.trim() && /.+@.+\..+/.test(email) && country.trim() && agree;
+  // While waiting on the issuer, poll chain state so the view flips to
+  // "Verified" on its own the moment the trustline is authorized (no refresh).
+  const pending = sent && !pos?.kycAuthorized;
+  useEffect(() => {
+    if (!pending) return;
+    const id = setInterval(reload, 10_000);
+    return () => clearInterval(id);
+  }, [pending, reload]);
 
-  function submit() {
-    const body = [
-      `Full name: ${name}`,
-      `Email: ${email}`,
-      `Country/Jurisdiction: ${country}`,
-      `Account type: ${accountType}`,
-      `Stellar account: ${address ?? '-'}`,
-      '',
-      'Please authorize my TANUR trustline (native AUTH_REQUIRED).',
-    ].join('\n');
-    window.location.href = `mailto:${ACCESS_EMAIL}?subject=${encodeURIComponent(
-      'Tanur KYC registration'
-    )}&body=${encodeURIComponent(body)}`;
-    if (typeof window !== 'undefined') localStorage.setItem(submitKey(address), '1');
-    setSent(true);
+  // Send the application straight to the issuer's inbox via FormSubmit.co
+  // (no backend / API key). The wallet is bound to the connected account and
+  // cannot be edited, so the issuer authorizes exactly this trustline.
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (phase === 'sending' || !address) return;
+    const form = e.currentTarget;
+    const data = Object.fromEntries(new FormData(form).entries());
+    if ((data._honey as string)?.length) return; // honeypot
+    setPhase('sending');
+    setError('');
+    try {
+      const res = await fetch(
+        `https://formsubmit.co/ajax/${encodeURIComponent(ACCESS_EMAIL)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            _subject: 'Tanur — KYC registration',
+            _template: 'table',
+            _captcha: 'false',
+            name: data.name,
+            email: data.email,
+            stellar_account: address,
+            allocation_usd: data.allocation || '—',
+            organization: data.entity || '—',
+            message: data.message || '—',
+            request: 'Please authorize my TANUR trustline (native AUTH_REQUIRED).',
+          }),
+        }
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !(json.success === 'true' || json.success === true)) {
+        throw new Error(json.message || 'Submission failed. Please try again.');
+      }
+      if (typeof window !== 'undefined') localStorage.setItem(submitKey(address), '1');
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setPhase('error');
+    }
   }
 
+  // Authorized on-chain — done.
   if (pos?.kycAuthorized) {
     return (
       <div className="mx-auto max-w-xl space-y-6">
@@ -86,26 +117,25 @@ export default function KycView() {
             Pending review
           </span>
           <h3 className="mt-3 font-display text-2xl text-ink">Application under review</h3>
-          <p className="mt-2 text-[14px] text-muted">
+          <p className="mt-2 text-[14px] leading-relaxed text-muted">
             Your application for
             <span className="mx-1 break-all font-mono text-[12px] text-ink">{address ?? '—'}</span>
-            has been submitted. The issuer will authorize your TANUR trustline
+            has been sent. The issuer will authorize your TANUR trustline
             (native AUTH_REQUIRED) once your details are verified.
           </p>
-          <div className="mt-6 flex flex-col items-center gap-3">
-            <div className="w-full divide-y divide-line rounded-lg border border-line-2 text-left [&>div]:px-4">
-              <StatusRow label="Application" ok={true} />
-              <StatusRow label="Authorized" ok={false} />
-            </div>
-            <Button onClick={reload} variant="secondary" className="w-full">
-              Check verification status
-            </Button>
+          <div className="mt-6 w-full divide-y divide-line rounded-lg border border-line-2 text-left [&>div]:px-4">
+            <StatusRow label="Application" ok />
+            <StatusRow label="Authorized" ok={false} />
           </div>
+          <p className="mt-4 text-[12px] text-faint">
+            This updates automatically once the issuer authorizes your account.
+          </p>
         </Card>
       </div>
     );
   }
 
+  // Registration — left intro + SAWIT-styled form (middle) + status (right).
   return (
     <ToolColumns
       left={
@@ -119,56 +149,60 @@ export default function KycView() {
         />
       }
       middle={
-        <div className="space-y-4">
-          <Input label="Full name" value={name} onChange={setName} placeholder="Jane Investor" />
-          <Input label="Email" value={email} onChange={setEmail} placeholder="jane@fund.com" type="email" />
-          <Input label="Country / Jurisdiction" value={country} onChange={setCountry} placeholder="Indonesia" />
+        <form onSubmit={onSubmit} className="space-y-4">
+          {/* honeypot */}
+          <input type="text" name="_honey" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
 
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Full name" name="name" required placeholder="Jane Investor" />
+            <Field label="Email" name="email" type="email" required placeholder="you@email.com" />
+          </div>
+
+          {/* Stellar wallet — auto-filled from the connected account, not editable */}
           <div>
-            <label className="text-[12px] text-faint">Account type</label>
-            <div className="mt-1.5 grid grid-cols-2 gap-2">
-              {(['Individual', 'Institution'] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setAccountType(t)}
-                  className={`rounded-lg border px-3 py-2.5 text-[14px] transition-colors ${
-                    accountType === t
-                      ? 'border-brand bg-brand font-medium text-white'
-                      : 'border-line-2 text-muted hover:border-ink/30'
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
+            <label className="text-[12px] font-medium text-ink">Stellar wallet (public key)</label>
+            <div className="mt-1.5 overflow-x-auto whitespace-nowrap rounded-xl border border-line bg-bg-2/60 px-3.5 py-2.5 font-mono text-[11px] leading-5 text-ink">
+              {address ?? '— connect your wallet —'}
             </div>
+            <p className="mt-1 text-[11px] text-faint">
+              Auto-filled from your connected wallet. The issuer authorizes exactly this account.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Intended allocation (USD)" name="allocation" placeholder="50,000  (optional)" />
+            <Field label="Organization" name="entity" placeholder="Optional" />
           </div>
 
           <div>
-            <label className="text-[12px] text-faint">Stellar account</label>
-            <div className="mt-1.5 break-all rounded-lg bg-bg-2 px-3 py-2.5 font-mono text-[12px] text-ink">
-              {address ?? '—'}
-            </div>
-          </div>
-
-          <label className="flex items-start gap-2.5 text-[13px] text-muted">
-            <input
-              type="checkbox"
-              checked={agree}
-              onChange={(e) => setAgree(e.target.checked)}
-              className="mt-0.5 accent-brand"
+            <label className="text-[12px] font-medium text-ink">Message</label>
+            <textarea
+              name="message"
+              rows={3}
+              placeholder="Anything we should know? (optional)"
+              className="mt-1.5 w-full rounded-xl border border-line bg-bg-2/40 px-3.5 py-2.5 text-[14px] text-ink outline-none transition-colors placeholder:text-faint focus:border-brand/50 focus:bg-card"
             />
-            I confirm the information is accurate and consent to KYC verification.
-          </label>
+          </div>
 
-          {sent ? (
-            <div className="rounded-lg border border-brand/30 bg-brand-tint px-4 py-3 text-[13px] text-brand">
-              Application opened in your email client — send it to complete registration.
+          {phase === 'error' && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-[13px] text-amber-700">
+              {error}
             </div>
-          ) : (
-            <Button onClick={submit} disabled={!canSubmit} size="lg" className="w-full">
-              Submit application
-            </Button>
           )}
+
+          <Button
+            type="submit"
+            disabled={phase === 'sending' || !address}
+            size="lg"
+            className="w-full"
+          >
+            {phase === 'sending' ? 'Sending…' : 'Submit application'}
+          </Button>
+          <p className="text-center text-[11px] text-faint">
+            {address
+              ? 'KYC-gated · the issuer authorizes your TANUR trustline'
+              : 'Connect your wallet first — it fills your Stellar account automatically'}
+          </p>
 
           {/* contracts */}
           <div className="pt-2">
@@ -180,7 +214,7 @@ export default function KycView() {
               <ContractRow label="TANUR (SAC)" id={ASSETS.tanur.sac} />
             </div>
           </div>
-        </div>
+        </form>
       }
       right={
         <HistoryPanel title="Status">
@@ -198,28 +232,31 @@ export default function KycView() {
   );
 }
 
-function Input({
+function Field({
   label,
-  value,
-  onChange,
-  placeholder,
+  name,
   type = 'text',
+  required,
+  placeholder,
 }: {
   label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
+  name: string;
   type?: string;
+  required?: boolean;
+  placeholder?: string;
 }) {
   return (
     <div>
-      <label className="text-[12px] text-faint">{label}</label>
+      <label className="text-[12px] font-medium text-ink">
+        {label}
+        {required && <span className="text-brand"> *</span>}
+      </label>
       <input
         type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        name={name}
+        required={required}
         placeholder={placeholder}
-        className="mt-1.5 w-full rounded-lg border border-line-2 bg-white px-3 py-2.5 text-[14px] text-ink outline-none transition-colors placeholder:text-faint focus:border-brand"
+        className="mt-1.5 w-full rounded-xl border border-line bg-bg-2/40 px-3.5 py-2.5 text-[14px] text-ink outline-none transition-colors placeholder:text-faint focus:border-brand/50 focus:bg-card"
       />
     </div>
   );
